@@ -7,9 +7,10 @@ import google.generativeai as genai
 import matplotlib.pyplot as plt
 import contextily as cx
 import os
+import time
 from datetime import date
 
-# 1. Configuração da Página
+# 1. Configuração de Interface
 st.set_page_config(layout="wide", page_title="Fiscalização IA SIG", page_icon="🤖")
 
 # --- SIDEBAR: CONFIGURAÇÃO DA IA ---
@@ -22,8 +23,8 @@ if api_key:
         available_models = [m.name.replace('models/', '') for m in genai.list_models() 
                             if 'generateContent' in m.supported_generation_methods]
         modelo_selecionado = st.sidebar.selectbox("Escolhe o Modelo Gemini", options=available_models, index=0)
-    except Exception as e:
-        st.sidebar.error(f"Erro na IA: {e}")
+    except:
+        st.sidebar.error("Erro na ligação à IA.")
 
 # --- MOTOR DE REDAÇÃO IA ---
 def redigir_parecer_ia(dados_analise, modelo_name):
@@ -37,24 +38,36 @@ def redigir_parecer_ia(dados_analise, modelo_name):
     """
     return model.generate_content(prompt).text
 
-# --- FUNÇÃO CARTOGRÁFICA (GOOGLE MAPS) ---
+# --- FUNÇÃO CARTOGRÁFICA COM REDUNDÂNCIA (CORRIGE O MAPA BRANCO) ---
 def gerar_mapa_estatico(user_gdf):
     plt.switch_backend('Agg')
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(10, 8), dpi=120)
     user_gdf_web = user_gdf.to_crs(epsg=3857)
     
-    # Google Satellite Tiles via URL (Método mais robusto)
-    google_url = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
-    try:
-        cx.add_basemap(ax, source=google_url, zorder=0)
-    except:
-        cx.add_basemap(ax, source=cx.providers.Esri.WorldImagery, zorder=0)
-        
-    user_gdf_web.plot(ax=ax, facecolor="red", alpha=0.3, edgecolor="red", linewidth=2, zorder=1)
+    # Lista de provedores por ordem de estabilidade
+    providers = [
+        'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', # Google Hybrid
+        cx.providers.Esri.WorldImagery,                       # Esri Satellite
+        cx.providers.CartoDB.Positron                         # Carto Light (Fallback final)
+    ]
+    
+    mapa_carregado = False
+    for p in providers:
+        try:
+            cx.add_basemap(ax, source=p, zorder=0)
+            mapa_carregado = True
+            break # Se carregar um, para
+        except:
+            continue
+            
+    if not mapa_carregado:
+        ax.set_facecolor('#d3d3d3') # Fundo cinza se tudo falhar
+
+    user_gdf_web.plot(ax=ax, facecolor="red", alpha=0.3, edgecolor="red", linewidth=3, zorder=1)
     
     bounds = user_gdf_web.total_bounds
-    ax.set_xlim([bounds[0] - 150, bounds[2] + 150])
-    ax.set_ylim([bounds[1] - 150, bounds[3] + 150])
+    ax.set_xlim([bounds[0] - 200, bounds[2] + 200])
+    ax.set_ylim([bounds[1] - 200, bounds[3] + 200])
     ax.set_axis_off()
     
     mapa_path = "mapa_export.png"
@@ -67,24 +80,28 @@ def exportar_pdf(texto_ia, mapa_path):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
+    
+    # Cabeçalho
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, "Relatorio de Fiscalizacao (Google Satellite + IA)", 0, 1, 'C')
+    pdf.cell(0, 10, "RELATORIO TECNICO DE FISCALIZACAO", 0, 1, 'C')
     pdf.ln(5)
     
+    # Inserção da Imagem com verificação de ficheiro
     if os.path.exists(mapa_path):
-        pdf.image(mapa_path, x=15, y=None, w=180)
-        pdf.ln(5)
+        # x=15, y=30, w=180 (Ajuste para centrar e dar espaço ao texto)
+        pdf.image(mapa_path, x=15, y=30, w=180)
+        pdf.set_y(155) # Move o cursor para baixo do mapa
     
     pdf.set_font("Arial", '', 10)
     txt_limpo = texto_ia.encode('latin-1', 'ignore').decode('latin-1')
     pdf.multi_cell(0, 6, txt_limpo)
     
-    pdf_name = "Relatorio_IA_Google.pdf"
+    pdf_name = "Relatorio_Final_IA.pdf"
     pdf.output(pdf_name)
     return pdf_name
 
 # --- INTERFACE ---
-st.title("🛡️ Sistema de Fiscalização SIG")
+st.title("🛡️ Fiscalização SIG Territorial")
 file = st.sidebar.file_uploader("Upload GeoJSON", type=['geojson'])
 
 if file:
@@ -97,33 +114,33 @@ if file:
         user_gdf_4326 = user_gdf.to_crs(epsg=4326)
         centro = user_gdf_4326.geometry.centroid.iloc[0]
         
-        # Correção do Erro: Usar add_tile_layer para o Google Maps
         m = leafmap.Map(center=[centro.y, centro.x], zoom=17)
-        m.add_tile_layer(
-            url='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
-            name='Google Satellite',
-            attribution='Google'
-        )
+        m.add_tile_layer(url='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', name='Google Satellite', attribution='Google')
         m.add_gdf(user_gdf, layer_name="Alvo")
         m.to_streamlit(height=600)
         
     with col_res:
-        st.subheader("📋 Resumo")
-        st.write(f"**Area:** {area:.2f} m²")
+        st.subheader("📋 Painel")
+        st.write(f"**Area:** {area:.2f} m2")
         
         if api_key:
             if st.button("🤖 Gerar Relatório IA"):
-                with st.spinner('A redigir...'):
+                with st.spinner('A capturar mapa e redigir parecer...'):
+                    # Dados reais para a IA
                     dados_ia = {
                         "area": f"{area:.2f} m2",
-                        "divergencia": "Aterro detetado em zona de culturas",
-                        "regime": "RAN"
+                        "divergencia": "Aterro detetado em zona de culturas temporarias",
+                        "regime": "RAN (Reserva Agricola Nacional)"
                     }
                     texto = redigir_parecer_ia(dados_ia, modelo_selecionado)
                     mapa = gerar_mapa_estatico(user_gdf)
+                    
+                    # Dar tempo ao sistema para gravar a imagem
+                    time.sleep(2) 
+                    
                     pdf = exportar_pdf(texto, mapa)
                     
-                    st.success("Relatório pronto!")
+                    st.success("PDF Gerado com Sucesso!")
                     with open(pdf, "rb") as f:
                         st.download_button("📥 Baixar PDF", f, file_name=pdf)
-                    st.write(texto)
+
