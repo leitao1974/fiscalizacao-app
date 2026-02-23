@@ -17,9 +17,8 @@ st.set_page_config(layout="wide", page_title="Fiscalização Territorial SIG", p
 def realizar_analise(user_gdf):
     area_total = user_gdf.area.sum()
     resultados = []
-    analise_uso_solo = "Ficheiro COS não encontrado para análise."
+    analise_uso_solo = "Ficheiro COS não encontrado na pasta data/."
     
-    # Mapeamento de ficheiros na pasta data/
     camadas = {
         "REN": "data/ren_amostra.geojson",
         "RAN": "data/ran_amostra.geojson",
@@ -40,109 +39,140 @@ def realizar_analise(user_gdf):
                     uso_oficial = inter['COS23_n4_L'].iloc[0]
                     uso_fiscal = inter['tipo_obra'].iloc[0] if 'tipo_obra' in inter.columns else "Atributo 'tipo_obra' ausente"
                     if str(uso_oficial).strip().lower() != str(uso_fiscal).strip().lower():
-                        analise_uso_solo = f"⚠️ DIVERGÊNCIA: COS indica '{uso_oficial}', detetado '{uso_fiscal}'."
+                        analise_uso_solo = f"⚠️ DIVERGÊNCIA DETETADA: A COS 2023 classifica como '{uso_oficial}', mas o levantamento indica '{uso_fiscal}'."
                     else:
-                        analise_uso_solo = f"✅ COERENTE: Uso '{uso_fiscal}' coincide com a COS."
+                        analise_uso_solo = f"✅ COERENTE: O uso '{uso_fiscal}' coincide com a classificação oficial da COS."
                 else:
-                    # Dados Jurídicos e Coimas
-                    info_jur = {
-                        "REN": {"lei": "DL 166/2008", "art": "Art. 20.º", "coima": "Singulares: €2k-€3.7k | Coletivas: €15k-€44.8k"},
-                        "RAN": {"lei": "DL 73/2009", "art": "Art. 22.º", "coima": "Singulares: €500-€3.7k | Coletivas: €2.5k-€44.8k"},
-                        "Rede Natura": {"lei": "Lei 50/2006", "art": "Habitats", "coima": "Até €5.000.000 (P. Coletivas)"}
+                    # REINTEGRAÇÃO DA ANÁLISE JURÍDICA COMPLETA
+                    info_juridica = {
+                        "REN": {
+                            "lei": "Regime Jurídico da Reserva Ecológica Nacional (DL n.º 166/2008, de 22 de agosto).",
+                            "artigo": "Artigo 20.º (Interdições). São proibidas ações de loteamento, obras de urbanização, construção e alteração do relevo natural.",
+                            "coima": "Singulares: € 2.000,00 a € 3.700,00 | Coletivas: € 15.000,00 a € 44.800,00 (Art. 25.º)."
+                        },
+                        "RAN": {
+                            "lei": "Regime Jurídico da Reserva Agrícola Nacional (DL n.º 73/2009, de 31 de março).",
+                            "artigo": "Artigo 22.º (Utilizações Proibidas). Os solos da RAN destinam-se exclusivamente à exploração agrícola.",
+                            "coima": "Singulares: € 500,00 a € 3.700,00 | Coletivas: € 2.500,00 a € 44.800,00 (Art. 43.º)."
+                        },
+                        "Rede Natura": {
+                            "lei": "DL n.º 142/2008 (Conservação da Natureza) e Lei n.º 50/2006 (Contraordenações Ambientais).",
+                            "artigo": "Proteção de Habitats e Espécies. Requer Avaliação de Incidências Ambientais (AIA) junto do ICNF.",
+                            "coima": "Contraordenações Muito Graves (Coletivas): € 24.000,00 a € 5.000.000,00."
+                        }
                     }
+                    
                     resultados.append({
-                        "Regime": nome, "Area": round(area_int, 2), "Perc": round(perc, 1),
-                        "Lei": info_jur[nome]["lei"], "Artigo": info_jur[nome]["art"], "Coima": info_jur[nome]["coima"]
+                        "Regime": nome,
+                        "Area": round(area_int, 2),
+                        "Perc": round(perc, 1),
+                        "Lei": info_juridica[nome]["lei"],
+                        "Artigo": info_juridica[nome]["artigo"],
+                        "Coima": info_juridica[nome]["coima"]
                     })
     
     return resultados, analise_uso_solo, area_total
 
-# --- FUNÇÃO PARA GERAR O MAPA COM SERVIDÕES E LEGENDA ---
+# --- FUNÇÃO DE MAPA ESTÁTICO COM SERVIDÕES ---
 
 def criar_mapa_imagem(user_gdf, resultados):
     fig, ax = plt.subplots(figsize=(10, 8))
-    
-    # Projetar para Web Mercator para o fundo de satélite
     user_gdf_web = user_gdf.to_crs(epsg=3857)
-    
-    # Cores para as servidões
     cores = {"REN": "#2ecc71", "RAN": "#f1c40f", "Rede Natura": "#3498db"}
     
-    # 1. Desenhar manchas das servidões que foram intersetadas
     for res in resultados:
         nome = res['Regime']
         path = f"data/{nome.lower().replace(' ', '_')}_amostra.geojson"
         if os.path.exists(path):
             camada = gpd.read_file(path).to_crs(epsg=3857)
-            # Clip da servidão apenas para a área de interesse
             patch = gpd.overlay(camada, user_gdf_web, how='intersection')
             if not patch.empty:
-                patch.plot(ax=ax, color=cores.get(nome, "gray"), alpha=0.5, label=f"Área em {nome}")
+                patch.plot(ax=ax, color=cores.get(nome, "gray"), alpha=0.5, label=f"Zona em {nome}")
 
-    # 2. Desenhar o contorno da área fiscalizada
-    user_gdf_web.plot(ax=ax, facecolor="none", edgecolor="red", linewidth=2.5, label="Área Fiscalizada")
+    user_gdf_web.plot(ax=ax, facecolor="none", edgecolor="red", linewidth=2.5, label="Área de Intervenção")
     
-    # 3. Adicionar fundo de satélite
     try:
         cx.add_basemap(ax, source=cx.providers.Esri.WorldImagery)
     except:
-        pass # Mantém sem fundo se falhar a net
+        pass
     
-    # 4. Legenda e Estética
-    ax.legend(loc='upper right', title="Legenda Técnica")
+    ax.legend(loc='upper right', prop={'size': 10})
     ax.set_axis_off()
-    
-    temp_img = "mapa_relatorio.png"
+    temp_img = "mapa_temp.png"
     plt.savefig(temp_img, bbox_inches='tight', dpi=150)
     plt.close()
     return temp_img
 
-# --- MOTOR DO RELATÓRIO WORD ---
+# --- MOTOR DE RELATÓRIO WORD JURÍDICO ---
 
 def gerar_word(user_gdf, resultados, analise_uso, area_total):
     doc = Document()
     style = doc.styles['Normal']
     style.font.name = 'Arial'
-    style.font.size = Pt(10)
+    style.font.size = Pt(11)
 
     doc.add_heading('Relatório Técnico de Fiscalização Territorial', 0)
     
-    # Secção 1: Mapa
-    doc.add_heading('1. Enquadramento Geográfico e Servidões', level=1)
+    # 1. Mapa e Dados Gerais
+    doc.add_heading('1. Enquadramento Geográfico e Identificação', level=1)
     img_path = criar_mapa_imagem(user_gdf, resultados)
     doc.add_picture(img_path, width=Inches(5.8))
     os.remove(img_path)
-    doc.add_paragraph(f"Área Total Analisada: {area_total:.2f} m²")
+    
+    doc.add_paragraph(f"Data da Análise: {date.today().strftime('%d/%m/%Y')}")
+    doc.add_paragraph(f"Área Total Fiscalizada: {area_total:.2f} m²")
 
-    # Secção 2: COS
-    doc.add_heading('2. Ocupação do Solo (COS 2023)', level=1)
-    doc.add_paragraph(analise_uso)
+    # 2. Análise COS
+    doc.add_heading('2. Verificação de Ocupação do Solo (COS 2023)', level=1)
+    p_cos = doc.add_paragraph()
+    p_cos.add_run("Resultado: ").bold = True
+    p_cos.add_run(analise_uso)
+    if "DIVERGÊNCIA" in analise_uso:
+        doc.add_paragraph(
+            "Fundamentação Jurídica: A discrepância entre o uso cartografado e o uso detetado no terreno constitui indício de "
+            "infração ao regime de uso e ocupação do solo, podendo configurar alteração ilícita sem licenciamento municipal."
+        )
 
-    # Secção 3: Jurídica
-    doc.add_heading('3. Análise Jurídica e Coimas', level=1)
+    # 3. Análise Jurídica Detalhada e Coimas
+    doc.add_heading('3. Análise de Servidões Administrativas e Restrições', level=1)
     if not resultados:
-        doc.add_paragraph("Não foram detetadas sobreposições.")
+        doc.add_paragraph("Não foram detetadas sobreposições com condicionantes de proteção ambiental ou agrícola.")
     else:
         for res in resultados:
             doc.add_heading(f"Regime: {res['Regime']}", level=2)
             p = doc.add_paragraph()
-            p.add_run(f"Sobreposição: {res['Area']} m² ({res['Perc']}%)\n").bold = True
-            p.add_run(f"Base Legal: {res['Lei']} ({res['Artigo']})\n")
-            p.add_run(f"Moldura Contraordenacional: {res['Coima']}")
+            p.add_run(f"Sobreposição Detetada: {res['Area']} m² ({res['Perc']}% da área total).\n").bold = True
+            
+            p_jur = doc.add_paragraph()
+            p_jur.add_run(f"Enquadramento Legal: ").bold = True
+            p_jur.add_run(res['Lei'] + "\n")
+            p_jur.add_run(f"Norma Aplicável: ").bold = True
+            p_jur.add_run(res['Artigo'] + "\n")
+            p_jur.add_run(f"Moldura Contraordenacional: ").bold = True
+            p_jur.add_run(res['Coima']).font.color.rgb = None
 
-    # Secção 4: Medidas
-    doc.add_heading('4. Medidas de Tutela', level=1)
-    for m in ["Levantamento de Auto de Notícia;", "Embargo de obra;", "Reposição da legalidade."]:
-        doc.add_paragraph(m, style='List Number')
+    # 4. Medidas de Tutela
+    doc.add_heading('4. Conclusões e Medidas de Tutela Recomendadas', level=1)
+    doc.add_paragraph("Face às evidências colhidas, propõe-se as seguintes medidas executivas:", style='Normal')
+    medidas = [
+        "Verificação imediata de licenciamento ou autorização administrativa nos serviços municipais;",
+        "Levantamento do respetivo Auto de Notícia caso não exista título autorizativo;",
+        "Avaliação de medida cautelar de embargo para evitar o agravamento do dano;",
+        "Notificação dos infratores para a reposição da situação anterior à infração."
+    ]
+    for medida in medidas:
+        doc.add_paragraph(medida, style='List Number')
 
-    fname = "Relatorio_Fiscalizacao_Final.docx"
+    doc.add_paragraph("\n\n__________________________________________\nAssinatura do Técnico/Fiscal Responsável")
+
+    fname = "Relatorio_Fiscalizacao_Completo.docx"
     doc.save(fname)
     return fname
 
 # --- INTERFACE ---
 
-st.title("🛡️ Fiscalização SIG: Análise Automática")
-uploaded_file = st.sidebar.file_uploader("Upload do polígono (GeoJSON)", type=['geojson'])
+st.title("🛡️ Sistema de Apoio à Fiscalização (SIG + Jurídico)")
+uploaded_file = st.sidebar.file_uploader("Carregar Polígono GeoJSON", type=['geojson'])
 
 col1, col2 = st.columns([2, 1])
 
@@ -157,15 +187,15 @@ with col1:
 with col2:
     if uploaded_file:
         res, uso_txt, a_total = realizar_analise(user_gdf)
-        st.subheader("📊 Resultados")
-        st.write(f"**Área:** {a_total:.2f} m²")
+        st.subheader("📊 Painel de Análise")
+        st.metric("Área Total", f"{a_total:.2f} m²")
         st.info(uso_txt)
         
-        if st.button("📝 Gerar Relatório Completo"):
-            with st.spinner('A processar mapa e texto jurídico...'):
+        if st.button("📝 Gerar Relatório Jurídico Completo"):
+            with st.spinner('A gerar relatório com mapas e fundamentação legal...'):
                 doc_path = gerar_word(user_gdf, res, uso_txt, a_total)
                 with open(doc_path, "rb") as f:
                     st.download_button("📥 Descarregar Word", f, file_name=doc_path)
     else:
-        st.info("Carregue um GeoJSON para começar.")
+        st.info("Aguardando upload de polígono...")
 
