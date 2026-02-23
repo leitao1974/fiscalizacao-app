@@ -67,23 +67,22 @@ def realizar_analise(user_gdf):
                     })
     return resultados, analise_uso_solo, area_total
 
-# --- FUNÇÃO CARTOGRÁFICA REFORÇADA ---
+# --- FUNÇÃO CARTOGRÁFICA ---
 def criar_mapa_imagem(user_gdf, resultados):
     plt.switch_backend('Agg') 
-    fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
+    fig, ax = plt.subplots(figsize=(10, 8), dpi=100) # DPI menor para garantir download rápido
     user_gdf_web = user_gdf.to_crs(epsg=3857)
     
-    # 1. Mapa Base com tratamento de erro
+    # Adicionar Mapa Base com Provedor Alternativo (CartoDB é mais estável)
     try:
-        # Forçamos o zoom e a fonte ESRI que é mais estável para PDF
-        cx.add_basemap(ax, source=cx.providers.Esri.WorldImagery, zorder=0)
-    except Exception as e:
-        print(f"Erro basemap: {e}")
+        cx.add_basemap(ax, source=cx.providers.CartoDB.Positron, zorder=0)
+    except:
+        try: cx.add_basemap(ax, source=cx.providers.OpenStreetMap.Mapnik, zorder=0)
+        except: pass
 
     estilos = {"REN": "#2ecc71", "RAN": "#f1c40f", "Rede Natura": "#8B4513"}
     legend_elements = []
 
-    # 2. Servidões
     for res in resultados:
         nome = res['Regime']
         path = f"data/{nome.lower().replace(' ', '_')}_amostra.geojson"
@@ -93,107 +92,102 @@ def criar_mapa_imagem(user_gdf, resultados):
             if not patch.empty:
                 cor = estilos.get(nome, "gray")
                 patch.plot(ax=ax, facecolor=cor, alpha=0.5, zorder=1)
-                legend_elements.append(mpatches.Patch(facecolor=cor, label=nome, alpha=0.6))
+                legend_elements.append(mpatches.Patch(facecolor=cor, label=nome))
 
-    # 3. Contorno Vermelho
     user_gdf_web.plot(ax=ax, facecolor="none", edgecolor="red", linewidth=3, zorder=2)
-    legend_elements.append(Line2D([0], [0], color='red', linewidth=3, label='Area Fiscalizada'))
+    legend_elements.append(Line2D([0], [0], color='red', linewidth=3, label='Alvo'))
 
     bounds = user_gdf_web.total_bounds
-    ax.set_xlim([bounds[0] - 150, bounds[2] + 150])
-    ax.set_ylim([bounds[1] - 150, bounds[3] + 150])
+    ax.set_xlim([bounds[0] - 200, bounds[2] + 200])
+    ax.set_ylim([bounds[1] - 200, bounds[3] + 200])
     
     if legend_elements:
-        ax.legend(handles=legend_elements, loc='upper right', frameon=True, facecolor='white')
+        ax.legend(handles=legend_elements, loc='upper right')
     
     ax.set_axis_off()
-    temp_img = "mapa_export.png"
-    plt.savefig(temp_img, bbox_inches='tight', pad_inches=0.1)
+    temp_img = "mapa_relatorio.png"
+    plt.savefig(temp_img, bbox_inches='tight')
     plt.close(fig)
-    time.sleep(1) # Espera técnica para o ficheiro ser escrito
     return temp_img
 
-# --- CLASSE PDF CORRIGIDA ---
-class PDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 14)
-        self.cell(0, 10, 'Relatorio Tecnico de Fiscalizacao Territorial', 0, 1, 'C')
-        self.ln(2)
-
-def gerar_pdf(user_gdf, resultados, analise_uso, area_total):
-    pdf = PDF()
+# --- GERAÇÃO DE PDF ---
+def gerar_pdf_final(user_gdf, resultados, analise_uso, area_total):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     
-    # Inserir Imagem (Ajuste de posição para não sobrepor)
+    # Cabeçalho
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, 'RELATORIO DE FISCALIZACAO TERRITORIAL', 0, 1, 'C')
+    pdf.ln(5)
+    
+    # Imagem do Mapa
     img_path = criar_mapa_imagem(user_gdf, resultados)
     if os.path.exists(img_path):
-        pdf.image(img_path, x=15, y=25, w=180)
+        pdf.image(img_path, x=10, y=None, w=190)
+        pdf.ln(5)
         os.remove(img_path)
     
-    # Mover cursor para baixo da imagem (Y=165 garante espaço)
-    pdf.set_y(165) 
-    pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 10, f"Data: {date.today().strftime('%d/%m/%Y')} | Area Total: {area_total:.2f} m2", 0, 1)
-    
-    # Secção 1 - COS
-    pdf.set_fill_color(240, 240, 240)
-    pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 10, "1. Ocupacao do Solo (COS 2023)", 1, 1, 'L', fill=True)
-    pdf.set_font('Arial', '', 10)
-    pdf.multi_cell(0, 7, str(analise_uso))
-    pdf.ln(3)
+    # Dados Gerais
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, f"Data: {date.today().strftime('%d/%m/%Y')} | Area: {area_total:.2f} m2", 0, 1)
+    pdf.ln(5)
 
-    # Secção 2 - Jurídica
-    pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 10, "2. Analise Juridica e Servidoes", 1, 1, 'L', fill=True)
+    # 1. COS
+    pdf.set_fill_color(230, 230, 230)
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, "1. OCUPACAO DO SOLO (COS 2023)", 1, 1, 'L', fill=True)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 8, str(analise_uso))
+    pdf.ln(5)
+
+    # 2. Jurídica
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, "2. ANALISE JURIDICA E SERVIDOES", 1, 1, 'L', fill=True)
+    pdf.ln(2)
     
     if not resultados:
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(0, 10, "Nenhuma servidao administrativa detetada.", 0, 1)
+        pdf.set_font('Arial', '', 11)
+        pdf.cell(0, 10, "Sem condicionantes detetadas.", 0, 1)
     else:
         for r in resultados:
-            pdf.set_font('Arial', 'B', 10)
-            pdf.cell(0, 7, f"Regime: {r['Regime']}", 0, 1)
-            pdf.set_font('Arial', '', 9)
-            txt = f"Sobreposicao: {r['Area']} m2 ({r['Perc']}%)\nLei: {r['Lei']}\nNorma: {r['Artigo']}\nCoima: {r['Coima']}"
-            pdf.multi_cell(0, 5, txt)
-            pdf.ln(2)
+            pdf.set_font('Arial', 'B', 11)
+            pdf.cell(0, 8, f"Regime: {r['Regime']}", 0, 1)
+            pdf.set_font('Arial', '', 10)
+            pdf.multi_cell(0, 6, f"Sobreposicao: {r['Area']} m2 ({r['Perc']}%)\nLei: {r['Lei']}\nArtigo: {r['Artigo']}\nCoima: {r['Coima']}")
+            pdf.ln(4)
 
-    # Secção 3 - Tutela
-    pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 10, "3. Medidas de Tutela Sugeridas", 1, 1, 'L', fill=True)
-    pdf.set_font('Arial', '', 10)
-    tutela = "- Levantamento de Auto de Noticia conforme base legal citada\n- Embargo imediato da obra / aterro detetado\n- Notificacao para reposicao da legalidade urbanistica"
-    pdf.multi_cell(0, 7, tutela)
+    # 3. Medidas
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 10, "3. MEDIDAS DE TUTELA RECOMENDADAS", 1, 1, 'L', fill=True)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 8, "- Levantamento de Auto de Noticia imediato\n- Embargo cautelar de obra/aterro\n- Notificacao para reposicao da legalidade")
 
-    pdf_output = "Relatorio_Final.pdf"
-    pdf.output(pdf_output)
-    return pdf_output
+    output_name = "Relatorio_Oficial.pdf"
+    pdf.output(output_name)
+    return output_name
 
 # --- INTERFACE ---
-st.title("🛡️ Fiscalizacao SIG (Relatorio PDF)")
-uploaded_file = st.sidebar.file_uploader("Upload GeoJSON", type=['geojson'])
+st.title("🛡️ Fiscalização SIG (Versão Estabilidade)")
+uploaded_file = st.sidebar.file_uploader("Ficheiro GeoJSON", type=['geojson'])
 
-col_map, col_res = st.columns([2, 1])
-
-with col_map:
-    m = leafmap.Map(google_map="HYBRID")
-    if uploaded_file:
-        user_gdf = gpd.read_file(uploaded_file).to_crs(epsg=3763)
-        m.add_gdf(user_gdf, layer_name="Fiscalizacao", style={'color': 'red', 'weight': 3})
+if uploaded_file:
+    user_gdf = gpd.read_file(uploaded_file).to_crs(epsg=3763)
+    res, uso_txt, a_total = realizar_analise(user_gdf)
+    
+    col_map, col_res = st.columns([2, 1])
+    
+    with col_map:
+        m = leafmap.Map(google_map="HYBRID")
+        m.add_gdf(user_gdf)
         centroid = user_gdf.to_crs(epsg=4326).centroid.iloc[0]
         m.set_center(centroid.x, centroid.y, zoom=16)
-        m.zoom_to_gdf(user_gdf)
-    m.to_streamlit(height=600)
-
-with col_res:
-    if uploaded_file:
-        res, uso_txt, a_total = realizar_analise(user_gdf)
-        st.subheader("📊 Info Parcela")
-        st.write(f"**Area:** {a_total:.2f} m2")
+        m.to_streamlit(height=500)
+        
+    with col_res:
         st.info(uso_txt)
-        if st.button("📝 Gerar Relatorio PDF"):
-            with st.spinner('A processar mapa e parecer juridico...'):
-                pdf_path = gerar_pdf(user_gdf, res, uso_txt, a_total)
-                with open(pdf_path, "rb") as f:
-                    st.download_button("📥 Baixar PDF", f, file_name=pdf_path)
+        if st.button("📝 Gerar Relatório PDF Oficial"):
+            with st.spinner('A processar...'):
+                final_pdf = gerar_pdf_final(user_gdf, res, uso_txt, a_total)
+                with open(final_pdf, "rb") as f:
+                    st.download_button("📥 Baixar PDF", f, file_name=final_pdf)
