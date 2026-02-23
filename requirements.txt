@@ -5,6 +5,7 @@ folium
 matplotlib
 contextily
 fpdf
+google-generativeai
 pyarrow
 pyogrio
 rtree
