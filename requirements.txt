@@ -1,0 +1,7 @@
+streamlit
+geopandas
+leafmap
+folium
+python-docx
+pyarrow
+fiona
