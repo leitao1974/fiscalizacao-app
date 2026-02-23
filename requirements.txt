@@ -3,9 +3,8 @@ geopandas
 leafmap
 folium
 python-docx
-pyarrow
-fiona
-rtree
-pyogrio
 matplotlib
 contextily
+pyarrow
+pyogrio
+rtree
