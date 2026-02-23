@@ -5,6 +5,8 @@ import leafmap.foliumap as leafmap
 from fpdf import FPDF
 import google.generativeai as genai
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.lines import Line2D
 import contextily as cx
 import os
 from datetime import date
@@ -95,7 +97,6 @@ def exportar_pdf_ia(texto_ia, mapa_path):
         pdf.ln(5)
     
     pdf.set_font("Arial", '', 10)
-    # Limpeza de caracteres para evitar erros de encoding no FPDF
     txt_limpo = texto_ia.encode('latin-1', 'ignore').decode('latin-1')
     pdf.multi_cell(0, 6, txt_limpo)
     
@@ -111,17 +112,8 @@ if file:
     user_gdf = gpd.read_file(file).to_crs(epsg=3763)
     area = user_gdf.area.sum()
     
-    # Simulação dos dados extraídos do SIG (Baseado no teu exemplo anterior [cite: 3, 5])
-    # Na versão final, podes automatizar esta extração das tuas camadas GeoJSON
-    dados_para_ia = {
-        "data_analise": date.today().strftime('%d/%m/%Y'),
-        "area_total": f"{area:.2f} m2 [cite: 3]",
-        "uso_oficial_cos": "Culturas temporarias de sequeiro e regadio [cite: 5]",
-        "uso_detetado": "Aterro + Construcao de infraestrutura [cite: 5]",
-        "servidao_detetada": "RAN - Reserva Agricola Nacional (100% de sobreposicao) [cite: 15, 22]"
-    }
-    
-    col_map, col_ia = st.columns([2, 1])
+    # Definição correta das colunas para evitar o NameError
+    col_map, col_res = st.columns([2, 1])
     
     with col_map:
         m = leafmap.Map(google_map="HYBRID")
@@ -131,7 +123,16 @@ if file:
         
     with col_res:
         st.subheader("📋 Resumo SIG")
-        st.write(f"**Área Alvo:** {area:.2f} m² [cite: 3]")
+        st.write(f"**Área Alvo:** {area:.2f} m²")
+        
+        # Dados para a IA baseados no contexto do seu relatório anterior 
+        dados_para_ia = {
+            "data_analise": date.today().strftime('%d/%m/%Y'),
+            "area_total": f"{area:.2f} m2",
+            "uso_oficial_cos": "Culturas temporarias de sequeiro e regadio",
+            "uso_detetado": "Aterro + Construcao de infraestrutura",
+            "servidao_detetada": "RAN - Reserva Agricola Nacional (100% de sobreposicao)"
+        }
         
         if not api_key:
             st.info("Insere a API Key na barra lateral para redigir o parecer.")
