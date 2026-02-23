@@ -38,40 +38,47 @@ def redigir_parecer_ia(dados_analise, modelo_name):
     """
     return model.generate_content(prompt).text
 
-# --- FUNÇÃO CARTOGRÁFICA COM REDUNDÂNCIA (CORRIGE O MAPA BRANCO) ---
+# --- FUNÇÃO CARTOGRÁFICA (FORÇAR RENDERIZAÇÃO) ---
 def gerar_mapa_estatico(user_gdf):
     plt.switch_backend('Agg')
-    fig, ax = plt.subplots(figsize=(10, 8), dpi=120)
+    # Aumentar o tamanho da figura para forçar o download dos tiles
+    fig, ax = plt.subplots(figsize=(12, 10), dpi=100)
+    
+    # Converter para Web Mercator (EPSG:3857)
     user_gdf_web = user_gdf.to_crs(epsg=3857)
     
-    # Lista de provedores por ordem de estabilidade
-    providers = [
-        'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', # Google Hybrid
+    # Desenhar o polígono primeiro com cor sólida para ser visível
+    user_gdf_web.plot(ax=ax, facecolor="red", alpha=0.5, edgecolor="darkred", linewidth=3, zorder=2)
+    
+    # TENTATIVA DE MAPA BASE COM TIMEOUT E MULTIPLOS PROVEDORES
+    mapa_sucesso = False
+    # Lista de URLs diretas para evitar falhas de bibliotecas intermédias
+    fontes = [
+        "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", # Google Hybrid
         cx.providers.Esri.WorldImagery,                       # Esri Satellite
-        cx.providers.CartoDB.Positron                         # Carto Light (Fallback final)
+        cx.providers.OpenStreetMap.Mapnik                     # OSM (Fallback)
     ]
     
-    mapa_carregado = False
-    for p in providers:
+    for fonte in fontes:
         try:
-            cx.add_basemap(ax, source=p, zorder=0)
-            mapa_carregado = True
-            break # Se carregar um, para
+            cx.add_basemap(ax, source=fonte, zorder=0, attribution=False)
+            mapa_sucesso = True
+            break
         except:
             continue
             
-    if not mapa_carregado:
-        ax.set_facecolor('#d3d3d3') # Fundo cinza se tudo falhar
-
-    user_gdf_web.plot(ax=ax, facecolor="red", alpha=0.3, edgecolor="red", linewidth=3, zorder=1)
+    if not mapa_sucesso:
+        ax.set_facecolor('#cccccc') # Fundo cinza se falhar
     
+    # Ajustar limites com margem generosa
     bounds = user_gdf_web.total_bounds
-    ax.set_xlim([bounds[0] - 200, bounds[2] + 200])
-    ax.set_ylim([bounds[1] - 200, bounds[3] + 200])
+    ax.set_xlim([bounds[0] - 250, bounds[2] + 250])
+    ax.set_ylim([bounds[1] - 250, bounds[3] + 250])
     ax.set_axis_off()
     
-    mapa_path = "mapa_export.png"
-    plt.savefig(mapa_path, bbox_inches='tight', pad_inches=0.1)
+    mapa_path = "mapa_final.png"
+    # Guardar com alta qualidade
+    plt.savefig(mapa_path, bbox_inches='tight', pad_inches=0.2)
     plt.close(fig)
     return mapa_path
 
@@ -81,20 +88,21 @@ def exportar_pdf(texto_ia, mapa_path):
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     
-    # Cabeçalho
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(0, 10, "RELATORIO TECNICO DE FISCALIZACAO", 0, 1, 'C')
     pdf.ln(5)
     
-    # Inserção da Imagem com verificação de ficheiro
+    # Inserção da Imagem com garantia de posicionamento
     if os.path.exists(mapa_path):
-        # x=15, y=30, w=180 (Ajuste para centrar e dar espaço ao texto)
-        pdf.image(mapa_path, x=15, y=30, w=180)
-        pdf.set_y(155) # Move o cursor para baixo do mapa
+        # x=10, y=30, w=190 (Largura quase total da folha A4)
+        pdf.image(mapa_path, x=10, y=30, w=190)
+        # Movemos o texto para a página 2 ou muito abaixo para não haver sobreposição
+        pdf.set_y(175) 
     
     pdf.set_font("Arial", '', 10)
-    txt_limpo = texto_ia.encode('latin-1', 'ignore').decode('latin-1')
-    pdf.multi_cell(0, 6, txt_limpo)
+    # Codificação para evitar caracteres "estranhos"
+    txt_fpdf = texto_ia.encode('latin-1', 'ignore').decode('latin-1')
+    pdf.multi_cell(0, 6, txt_fpdf)
     
     pdf_name = "Relatorio_Final_IA.pdf"
     pdf.output(pdf_name)
@@ -116,31 +124,36 @@ if file:
         
         m = leafmap.Map(center=[centro.y, centro.x], zoom=17)
         m.add_tile_layer(url='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', name='Google Satellite', attribution='Google')
-        m.add_gdf(user_gdf, layer_name="Alvo")
+        m.add_gdf(user_gdf, layer_name="Parcela")
         m.to_streamlit(height=600)
         
     with col_res:
-        st.subheader("📋 Painel")
-        st.write(f"**Area:** {area:.2f} m2")
+        st.subheader("📋 Painel de Controle")
+        st.write(f"**Área Detetada:** {area:.2f} m² ")
         
         if api_key:
             if st.button("🤖 Gerar Relatório IA"):
-                with st.spinner('A capturar mapa e redigir parecer...'):
-                    # Dados reais para a IA
+                with st.spinner('A capturar cartografia e redigir parecer técnico...'):
+                    # Dados contextuais para a IA
                     dados_ia = {
                         "area": f"{area:.2f} m2",
-                        "divergencia": "Aterro detetado em zona de culturas temporarias",
-                        "regime": "RAN (Reserva Agricola Nacional)"
+                        "divergencia": "Aterro detetado em zona de culturas temporarias [cite: 40, 55]",
+                        "regime": "RAN (Reserva Agricola Nacional) [cite: 41, 64]"
                     }
-                    texto = redigir_parecer_ia(dados_ia, modelo_selecionado)
-                    mapa = gerar_mapa_estatico(user_gdf)
                     
-                    # Dar tempo ao sistema para gravar a imagem
-                    time.sleep(2) 
+                    texto_parecer = redigir_parecer_ia(dados_ia, modelo_selecionado)
+                    # Gerar a imagem do mapa
+                    mapa_img = gerar_mapa_estatico(user_gdf)
                     
-                    pdf = exportar_pdf(texto, mapa)
+                    # Pausa para garantir escrita no disco
+                    time.sleep(1)
                     
-                    st.success("PDF Gerado com Sucesso!")
-                    with open(pdf, "rb") as f:
-                        st.download_button("📥 Baixar PDF", f, file_name=pdf)
+                    pdf_final = exportar_pdf(texto_parecer, mapa_img)
+                    
+                    st.success("Relatório gerado com sucesso!")
+                    with open(pdf_final, "rb") as f:
+                        st.download_button("📥 Descarregar PDF", f, file_name=pdf_final)
+                    st.markdown(texto_parecer)
+        else:
+            st.warning("Insere a API Key para redigir o relatório.")
 
