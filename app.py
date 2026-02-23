@@ -3,21 +3,22 @@ import geopandas as gpd
 import pandas as pd
 import leafmap.foliumap as leafmap
 from docx import Document
-from docx.shared import Pt
+from docx.shared import Pt, Inches
 from datetime import date
 import os
+import matplotlib.pyplot as plt
+import contextily as cx
 
 # 1. Configuração de Interface
-st.set_page_config(layout="wide", page_title="Fiscalização Territorial SIG", page_icon="🛡️")
+st.set_page_config(layout="wide", page_title="Fiscalização SIG Portugal", page_icon="🛡️")
 
 # --- MOTOR DE ANÁLISE GEOSPACIAL E JURÍDICA ---
 
 def realizar_analise(user_gdf):
     area_total = user_gdf.area.sum()
     resultados = []
-    analise_uso_solo = "Ficheiro COS não encontrado para comparação."
+    analise_uso_solo = "Ficheiro COS não encontrado."
     
-    # Mapeamento de ficheiros e Regimes
     camadas = {
         "REN": "data/ren_amostra.geojson",
         "RAN": "data/ran_amostra.geojson",
@@ -35,143 +36,108 @@ def realizar_analise(user_gdf):
                 perc = (area_int / area_total) * 100
                 
                 if nome == "COS":
-                    # Lógica de cruzamento de atributos COS23 vs tipo_obra
                     uso_oficial = inter['COS23_n4_L'].iloc[0]
-                    uso_fiscal = inter['tipo_obra'].iloc[0] if 'tipo_obra' in inter.columns else "Atributo 'tipo_obra' ausente"
-                    
+                    uso_fiscal = inter['tipo_obra'].iloc[0] if 'tipo_obra' in inter.columns else "Não definido"
                     if str(uso_oficial).strip().lower() != str(uso_fiscal).strip().lower():
-                        analise_uso_solo = f"⚠️ DIVERGÊNCIA DETETADA: A COS 2023 classifica como '{uso_oficial}', mas o levantamento indica '{uso_fiscal}'."
+                        analise_uso_solo = f"⚠️ DIVERGÊNCIA: COS indica '{uso_oficial}', detetado '{uso_fiscal}'."
                     else:
-                        analise_uso_solo = f"✅ COERENTE: O uso '{uso_fiscal}' coincide com a classificação oficial da COS."
+                        analise_uso_solo = f"✅ COERENTE: Uso '{uso_fiscal}' coincide com a COS."
                 else:
-                    # Definição jurídica detalhada
                     info_jur = {
-                        "REN": {
-                            "lei": "DL n.º 166/2008 (Regime da REN)",
-                            "artigo": "Artigo 20.º (Interdições)",
-                            "coima": "Singulares: €2.000 a €3.700 | Coletivas: €15.000 a €44.800"
-                        },
-                        "RAN": {
-                            "lei": "DL n.º 73/2009 (Regime da RAN)",
-                            "artigo": "Artigo 22.º (Utilizações Proibidas)",
-                            "coima": "Singulares: €500 a €3.700 | Coletivas: €2.500 a €44.800"
-                        },
-                        "Rede Natura": {
-                            "lei": "DL n.º 142/2008 e Lei n.º 50/2006",
-                            "artigo": "Proteção de Habitats e Espécies",
-                            "coima": "Muito Graves (Coletivas): €24.000 a €5.000.000"
-                        }
+                        "REN": {"lei": "DL 166/2008", "art": "Art. 20.º", "coima": "€2.000 a €44.800"},
+                        "RAN": {"lei": "DL 73/2009", "art": "Art. 22.º", "coima": "€500 a €44.800"},
+                        "Rede Natura": {"lei": "Lei 50/2006", "art": "DL 142/2008", "coima": "Até €5.000.000"}
                     }
-                    
                     resultados.append({
-                        "Regime": nome,
-                        "Area": round(area_int, 2),
-                        "Perc": round(perc, 1),
-                        "Lei": info_jur[nome]["lei"],
-                        "Artigo": info_jur[nome]["artigo"],
-                        "Coima": info_jur[nome]["coima"]
+                        "Regime": nome, "Area": round(area_int, 2), "Perc": round(perc, 1),
+                        "Lei": info_jur[nome]["lei"], "Artigo": info_jur[nome]["art"], "Coima": info_jur[nome]["coima"]
                     })
     
     return resultados, analise_uso_solo, area_total
 
-# --- MOTOR DE GERAÇÃO DO RELATÓRIO WORD ---
+# --- FUNÇÃO PARA GERAR O MAPA IMAGEM ---
 
-def gerar_word(resultados, analise_uso, area_total):
+def criar_mapa_imagem(user_gdf):
+    fig, ax = plt.subplots(figsize=(10, 8))
+    # Projetar para Web Mercator para o contextily (fundo de satélite)
+    user_gdf_web = user_gdf.to_crs(epsg=3857)
+    user_gdf_web.plot(ax=ax, facecolor="none", edgecolor="red", linewidth=2.5)
+    
+    try:
+        cx.add_basemap(ax, source=cx.providers.Esri.WorldImagery)
+    except:
+        st.warning("Não foi possível carregar o mapa de fundo para o relatório.")
+    
+    ax.set_axis_off()
+    temp_img = "mapa_relatorio.png"
+    plt.savefig(temp_img, bbox_inches='tight', dpi=150)
+    plt.close()
+    return temp_img
+
+# --- MOTOR DO RELATÓRIO WORD ---
+
+def gerar_word(user_gdf, resultados, analise_uso, area_total):
     doc = Document()
-    style = doc.styles['Normal']
-    style.font.name = 'Arial'
-    style.font.size = Pt(11)
-
     doc.add_heading('Relatório Técnico de Fiscalização Territorial', 0)
     
-    # Secção 1
-    doc.add_heading('1. Identificação da Área e Metodologia', level=1)
-    doc.add_paragraph(f"Data da Análise: {date.today().strftime('%d/%m/%Y')}")
-    doc.add_paragraph(f"Área Total do Polígono: {area_total:.2f} m²")
-    doc.add_paragraph("Metodologia: Cruzamento geospacial automático com base em dados oficiais da DGT e SNIG.")
+    # 1. Mapa e Localização
+    doc.add_heading('1. Localização e Enquadramento Visual', level=1)
+    img_path = criar_mapa_imagem(user_gdf)
+    doc.add_picture(img_path, width=Inches(5.8))
+    os.remove(img_path)
+    
+    doc.add_paragraph(f"Área Total Fiscalizada: {area_total:.2f} m²")
 
-    # Secção 2
-    doc.add_heading('2. Análise de Ocupação do Solo (COS 2023)', level=1)
-    p_cos = doc.add_paragraph()
-    p_cos.add_run("Resultado: ").bold = True
-    p_cos.add_run(analise_uso)
-    if "DIVERGÊNCIA" in analise_uso:
-        doc.add_paragraph("Nota: A discrepância detetada constitui indício de infração por alteração ilícita do uso do solo.")
+    # 2. Análise COS
+    doc.add_heading('2. Verificação de Ocupação do Solo (COS 2023)', level=1)
+    doc.add_paragraph(analise_uso)
 
-    # Secção 3
-    doc.add_heading('3. Análise Jurídica de Servidões e Restrições', level=1)
+    # 3. Análise Jurídica
+    doc.add_heading('3. Servidões e Molduras Contraordenacionais', level=1)
     if not resultados:
-        doc.add_paragraph("Não foram detetadas sobreposições com regimes de proteção ambiental ou agrícola.")
+        doc.add_paragraph("Sem restrições detetadas.")
     else:
         for res in resultados:
             doc.add_heading(f"Regime: {res['Regime']}", level=2)
             p = doc.add_paragraph()
-            p.add_run(f"Sobreposição: {res['Area']} m² ({res['Perc']}% da área total)\n").bold = True
-            p.add_run(f"Citação Legal: {res['Lei']}\n")
-            p.add_run(f"Artigo Aplicável: {res['Artigo']}\n")
-            p.add_run(f"Moldura Contraordenacional: {res['Coima']}").font.color.rgb = None
+            p.add_run(f"Sobreposição: {res['Area']} m² ({res['Perc']}%)\n").bold = True
+            p.add_run(f"Base Legal: {res['Lei']} ({res['Artigo']})\n")
+            p.add_run(f"Coima Prevista: {res['Coima']}")
 
-    # Secção 4
-    doc.add_heading('4. Conclusões e Medidas de Tutela', level=1)
-    p_tutela = doc.add_paragraph()
-    p_tutela.add_run("Medidas de Tutela Recomendadas:").bold = True
-    
-    medidas = [
-        "Verificação imediata de licenciamento nos serviços municipais;",
-        "Levantamento do respetivo Auto de Notícia caso não exista título autorizativo;",
-        "Avaliação de medida cautelar de embargo para evitar agravamento do dano;",
-        "Notificação para reposição da situação anterior à infração."
-    ]
-    for medida in medidas:
-        doc.add_paragraph(medida, style='List Number')
+    # 4. Medidas de Tutela
+    doc.add_heading('4. Conclusões e Recomendações', level=1)
+    medidas = ["Levantamento de Auto de Notícia;", "Embargo de obra (se aplicável);", "Notificação para reposição."]
+    for m in medidas:
+        doc.add_paragraph(m, style='List Number')
 
-    doc.add_paragraph("\n\n__________________________________________\nAssinatura do Técnico Responsável")
-
-    fname = "Relatorio_Fiscalizacao_Final.docx"
+    fname = "Relatorio_Final_Fiscalizacao.docx"
     doc.save(fname)
     return fname
 
-# --- INTERFACE STREAMLIT ---
+# --- INTERFACE ---
 
-st.sidebar.title("📁 Configuração")
-uploaded_file = st.sidebar.file_uploader("Upload polígono de fiscalização (GeoJSON)", type=['geojson'])
-
-st.title("🛡️ Sistema de Apoio à Fiscalização (REN/RAN/COS)")
+st.title("🛡️ Fiscalização SIG 2026")
+uploaded_file = st.sidebar.file_uploader("Upload GeoJSON", type=['geojson'])
 
 col1, col2 = st.columns([2, 1])
 
 with col1:
     m = leafmap.Map(center=[39.5, -8.0], zoom=7, google_map="HYBRID")
     if uploaded_file:
-        try:
-            user_gdf = gpd.read_file(uploaded_file).to_crs(epsg=3763)
-            m.add_gdf(user_gdf, layer_name="Área Fiscalizada", fill_colors=["red"])
-            m.zoom_to_gdf(user_gdf)
-            st.success("Polígono carregado e projetado (EPSG:3763).")
-        except Exception as e:
-            st.error(f"Erro no processamento SIG: {e}")
+        user_gdf = gpd.read_file(uploaded_file).to_crs(epsg=3763)
+        m.add_gdf(user_gdf, layer_name="Fiscalização")
+        m.zoom_to_gdf(user_gdf)
     m.to_streamlit(height=600)
 
 with col2:
-    st.subheader("📋 Painel de Conformidade")
     if uploaded_file:
         res, uso_txt, a_total = realizar_analise(user_gdf)
-        
-        st.metric("Área Total", f"{a_total:.2f} m²")
         st.info(uso_txt)
-        
-        if res:
-            st.warning(f"Detetadas {len(res)} condicionantes legais.")
-            for r in res:
-                with st.expander(f"Ver Detalhes: {r['Regime']}"):
-                    st.write(f"**Sobreposição:** {r['Perc']}%")
-                    st.write(f"**Coima:** {r['Coima']}")
-            
-            if st.button("📝 Gerar Relatório Word Final"):
-                path_doc = gerar_word(res, uso_txt, a_total)
-                with open(path_doc, "rb") as f:
-                    st.download_button("📥 Descarregar Documento", f, file_name=path_doc)
-        else:
-            st.success("Nenhuma restrição detetada.")
+        if st.button("📝 Gerar Relatório com Mapa"):
+            with st.spinner('A gerar relatório e mapa de satélite...'):
+                doc_path = gerar_word(user_gdf, res, uso_txt, a_total)
+                with open(doc_path, "rb") as f:
+                    st.download_button("📥 Baixar Relatório Word", f, file_name=doc_path)
     else:
-        st.info("Aguardando ficheiro para análise.")
+        st.info("Aguardando ficheiro...")
+
