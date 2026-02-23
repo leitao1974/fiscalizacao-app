@@ -5,3 +5,5 @@ folium
 python-docx
 pyarrow
 fiona
+rtree
+pyogrio
