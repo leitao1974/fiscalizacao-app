@@ -11,15 +11,14 @@ import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 import contextily as cx
 
-# 1. Configuração da Página
+# 1. Configuração de Interface
 st.set_page_config(layout="wide", page_title="Fiscalização Territorial SIG", page_icon="🛡️")
 
 # --- MOTOR DE ANÁLISE GEOSPACIAL ---
-
 def realizar_analise(user_gdf):
-    area_total = user_gdf.area.sum()
+    area_total = user_gdf.area.sum() [cite: 3]
     resultados = []
-    analise_uso_solo = "Ficheiro COS não encontrado na pasta data/."
+    analise_uso_solo = "Ficheiro COS não encontrado." [cite: 4]
     
     camadas = {
         "REN": "data/ren_amostra.geojson",
@@ -38,56 +37,44 @@ def realizar_analise(user_gdf):
                 perc = (area_int / area_total) * 100
                 
                 if nome == "COS":
-                    uso_oficial = inter['COS23_n4_L'].iloc[0]
-                    uso_fiscal = inter['tipo_obra'].iloc[0] if 'tipo_obra' in inter.columns else "Atributo 'tipo_obra' ausente"
+                    uso_oficial = inter['COS23_n4_L'].iloc[0] [cite: 5]
+                    uso_fiscal = inter['tipo_obra'].iloc[0] if 'tipo_obra' in inter.columns else "Não definido" [cite: 5]
                     if str(uso_oficial).strip().lower() != str(uso_fiscal).strip().lower():
-                        analise_uso_solo = f"⚠️ DIVERGÊNCIA: A COS classifica como '{uso_oficial}', mas detetado '{uso_fiscal}'."
+                        analise_uso_solo = f"⚠️ DIVERGÊNCIA: A COS classifica como '{uso_oficial}', mas detetado '{uso_fiscal}'." [cite: 5]
                     else:
-                        analise_uso_solo = f"✅ COERENTE: O uso '{uso_fiscal}' coincide com a classificação da COS."
+                        analise_uso_solo = f"✅ COERENTE: Uso '{uso_fiscal}' coincide com a classificação da COS."
                 else:
-                    # Definições Jurídicas e Coimas
-                    info_juridica = {
-                        "REN": {
-                            "lei": "Regime Jurídico da REN (DL n.º 166/2008).",
-                            "artigo": "Artigo 20.º (Interdições). Proibidas obras e alteração do relevo.",
-                            "coima": "Singulares: €2.000 a €3.700 | Coletivas: €15.000 a €44.800."
-                        },
-                        "RAN": {
-                            "lei": "Regime Jurídico da RAN (DL n.º 73/2009).",
-                            "artigo": "Artigo 22.º (Utilizações Proibidas). Solo de proteção agrícola.",
-                            "coima": "Singulares: €500 a €3.700 | Coletivas: €2.500 a €44.800."
-                        },
-                        "Rede Natura": {
-                            "lei": "DL n.º 142/2008 e Lei n.º 50/2006.",
-                            "artigo": "Proteção de Habitats. Sujeito a AIA junto do ICNF.",
-                            "coima": "Muito Graves (Coletivas): €24.000 a €5.000.000."
-                        }
+                    info_jur = {
+                        "REN": {"lei": "DL 166/2008", "art": "Art. 20.º", "coima": "€2.000 a €44.800"}, [cite: 8, 9]
+                        "RAN": {"lei": "DL 73/2009", "art": "Art. 22.º", "coima": "€500 a €3.700 | €2.500 a €44.800"}, [cite: 8, 9]
+                        "Rede Natura": {"lei": "Lei 50/2006", "art": "DL 142/2008", "coima": "Até €5.000.000"} [cite: 8, 9]
                     }
                     resultados.append({
                         "Regime": nome, "Area": round(area_int, 2), "Perc": round(perc, 1),
-                        "Lei": info_juridica[nome]["lei"], "Artigo": info_juridica[nome]["artigo"], 
-                        "Coima": info_juridica[nome]["coima"]
+                        "Lei": info_jur[nome]["lei"], "Artigo": info_jur[nome]["art"], "Coima": info_jur[nome]["coima"]
                     })
     return resultados, analise_uso_solo, area_total
 
-# --- FUNÇÃO CARTOGRÁFICA (TRAMAS E LEGENDA) ---
-
+# --- FUNÇÃO CARTOGRÁFICA (CORREÇÃO DE MAPA BASE) ---
 def criar_mapa_imagem(user_gdf, resultados):
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
+    # Converter para Web Mercator para o contextily
     user_gdf_web = user_gdf.to_crs(epsg=3857)
     
     estilos = {
-        "REN": {"cor": "#2ecc71", "hatch": "////", "label": "REN (Diagonais Verdes)"},
-        "RAN": {"cor": "#f1c40f", "hatch": "\\\\\\\\", "label": "RAN (Amarelo Sólido)"},
-        "Rede Natura": {"cor": "#8B4513", "hatch": "----", "label": "Rede Natura (Horizontais Castanhas)"}
+        "REN": {"cor": "#2ecc71", "hatch": "////", "label": "REN"},
+        "RAN": {"cor": "#f1c40f", "hatch": "\\\\\\\\", "label": "RAN"},
+        "Rede Natura": {"cor": "#8B4513", "hatch": "----", "label": "Natura 2000"}
     }
     legend_elements = []
 
+    # 1. Adicionar Mapa Base (Z-order 0)
     try:
         cx.add_basemap(ax, source=cx.providers.Esri.WorldImagery, zorder=0)
     except:
         pass
 
+    # 2. Desenhar Servidões (Z-order 1)
     for res in resultados:
         nome = res['Regime']
         path = f"data/{nome.lower().replace(' ', '_')}_amostra.geojson"
@@ -99,90 +86,69 @@ def criar_mapa_imagem(user_gdf, resultados):
                 patch.plot(ax=ax, facecolor=estilo["cor"], edgecolor=estilo["cor"], 
                            hatch=estilo["hatch"], alpha=0.4, zorder=1)
                 legend_elements.append(mpatches.Patch(facecolor=estilo["cor"], edgecolor=estilo["cor"], 
-                                                      hatch=estilo["hatch"], label=estilo["label"], alpha=0.7))
+                                                      hatch=estilo["hatch"], label=nome, alpha=0.6))
 
+    # 3. Desenhar Contorno Fiscalização (Z-order 2)
     user_gdf_web.plot(ax=ax, facecolor="none", edgecolor="red", linewidth=2.5, zorder=2)
-    legend_elements.append(Line2D([0], [0], color='red', linewidth=2.5, label='Área Fiscalizada (Contorno)'))
+    legend_elements.append(Line2D([0], [0], color='red', linewidth=2.5, label='Área Fiscalizada'))
+
+    # Zoom focado
+    bounds = user_gdf_web.total_bounds
+    ax.set_xlim([bounds[0] - 100, bounds[2] + 100])
+    ax.set_ylim([bounds[1] - 100, bounds[3] + 100])
     
     if legend_elements:
-        ax.legend(handles=legend_elements, loc='upper right', frameon=True, facecolor='white', framealpha=0.9)
+        ax.legend(handles=legend_elements, loc='upper right', frameon=True, facecolor='white')
     
     ax.set_axis_off()
-    bounds = user_gdf_web.total_bounds
-    ax.set_xlim([bounds[0] - 60, bounds[2] + 60])
-    ax.set_ylim([bounds[1] - 60, bounds[3] + 60])
-    
     temp_img = "mapa_temp.png"
-    plt.savefig(temp_img, bbox_inches='tight', dpi=150)
+    plt.savefig(temp_img, bbox_inches='tight', pad_inches=0.1)
     plt.close()
     return temp_img
 
-# --- GERAÇÃO DO WORD ---
-
-def gerar_word(user_gdf, resultados, analise_uso, area_total):
-    doc = Document()
-    doc.add_heading('Relatório Técnico de Fiscalização Territorial', 0)
-    
-    doc.add_heading('1. Enquadramento Geográfico', level=1)
-    img_path = criar_mapa_imagem(user_gdf, resultados)
-    doc.add_picture(img_path, width=Inches(5.8))
-    os.remove(img_path)
-    doc.add_paragraph(f"Data: {date.today().strftime('%d/%m/%Y')} | Área Total: {area_total:.2f} m²")
-
-    doc.add_heading('2. Ocupação do Solo (COS 2023)', level=1)
-    doc.add_paragraph(analise_uso)
-
-    doc.add_heading('3. Análise Jurídica e Coimas', level=1)
-    if not resultados:
-        doc.add_paragraph("Nenhuma servidão detetada.")
-    else:
-        for res in resultados:
-            doc.add_heading(f"Regime: {res['Regime']}", level=2)
-            p = doc.add_paragraph()
-            p.add_run(f"Sobreposição: {res['Area']} m² ({res['Perc']}%)\n").bold = True
-            p.add_run(f"Lei: {res['Lei']}\nArtigo: {res['Artigo']}\nCoima: {res['Coima']}")
-
-    doc.add_heading('4. Medidas de Tutela', level=1)
-    for m in ["Levantamento de Auto de Notícia;", "Embargo de obra;", "Notificação para reposição."]:
-        doc.add_paragraph(m, style='List Number')
-
-    fname = "Relatorio_Fiscalizacao.docx"
-    doc.save(fname)
-    return fname
-
-# --- INTERFACE STREAMLIT COM AUTO-ZOOM ---
-
-st.sidebar.title("📁 Dados")
+# --- INTERFACE ---
+st.title("🛡️ Sistema de Fiscalização SIG")
 uploaded_file = st.sidebar.file_uploader("Upload GeoJSON", type=['geojson'])
-
-st.title("🛡️ Fiscalização SIG Territorial")
 
 col_map, col_res = st.columns([2, 1])
 
 with col_map:
-    # Definimos o mapa com Google Hybrid
     m = leafmap.Map(google_map="HYBRID")
-    
     if uploaded_file:
         user_gdf = gpd.read_file(uploaded_file).to_crs(epsg=3763)
         m.add_gdf(user_gdf, layer_name="Fiscalização", style={'color': 'red', 'weight': 3})
         
-        # FORÇAR ZOOM NO MAPA INTERATIVO
+        # FORÇAR ZOOM: Primeiro centralizar, depois fazer zoom ao GDF
+        centroid = user_gdf.to_crs(epsg=4326).centroid.iloc[0]
+        m.set_center(centroid.x, centroid.y, zoom=16)
         m.zoom_to_gdf(user_gdf)
-    
     m.to_streamlit(height=600)
 
 with col_res:
     if uploaded_file:
         res, uso_txt, a_total = realizar_analise(user_gdf)
         st.subheader("📊 Painel")
-        st.metric("Área", f"{a_total:.1f} m²")
-        st.info(uso_txt)
+        st.metric("Área Fiscalizada", f"{a_total:.2f} m²") [cite: 3]
+        st.info(uso_txt) [cite: 5]
         
-        if st.button("📝 Gerar Word Final"):
-            with st.spinner('A gerar relatório...'):
-                doc_path = gerar_word(user_gdf, res, uso_txt, a_total)
-                with open(doc_path, "rb") as f:
-                    st.download_button("📥 Descarregar", f, file_name=doc_path)
-    else:
-        st.info("Carregue um GeoJSON para começar.")
+        if st.button("📝 Gerar Relatório"):
+            doc = Document()
+            doc.add_heading('Relatório de Fiscalização Territorial', 0) [cite: 1]
+            img_path = criar_mapa_imagem(user_gdf, res)
+            doc.add_picture(img_path, width=Inches(5.5))
+            os.remove(img_path)
+            
+            doc.add_heading('Análise Jurídica e Coimas', level=1) [cite: 6]
+            for r in res:
+                doc.add_heading(f"Regime: {r['Regime']}", level=2) [cite: 7]
+                doc.add_paragraph(f"Sobreposição: {r['Area']} m² ({r['Perc']}%)") [cite: 8]
+                doc.add_paragraph(f"Lei: {r['Lei']} | Artigo: {r['Artigo']}") [cite: 8]
+                doc.add_paragraph(f"Coima: {r['Coima']}") [cite: 9]
+            
+            doc.add_heading('Medidas de Tutela', level=1) [cite: 10]
+            for m_tutela in ["Auto de Notícia", "Embargo", "Reposição"]: [cite: 11, 12, 13]
+                doc.add_paragraph(m_tutela, style='List Bullet')
+            
+            doc.save("Relatorio_Final.docx")
+            with open("Relatorio_Final.docx", "rb") as f:
+                st.download_button("📥 Baixar Relatório", f, file_name="Relatorio_Final.docx")
