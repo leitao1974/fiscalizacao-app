@@ -2,9 +2,9 @@ streamlit
 geopandas
 leafmap
 folium
-python-docx
 matplotlib
 contextily
+fpdf
 pyarrow
 pyogrio
 rtree
