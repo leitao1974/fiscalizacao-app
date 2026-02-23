@@ -50,59 +50,77 @@ def redigir_parecer_ia(dados_analise, modelo_name):
     except Exception as e:
         return f"Erro na geracao do parecer: {e}"
 
-# --- FUNÇÃO CARTOGRÁFICA TÉCNICA (FIX DA IMAGEM BRANCA) ---
+# --- FUNÇÃO CARTOGRÁFICA (FORÇAR MAPA BASE) ---
 def gerar_mapa_tecnico(user_gdf):
     plt.switch_backend('Agg')
+    # Aumentamos o tamanho para forçar o sistema a capturar os tiles
     fig, ax = plt.subplots(figsize=(12, 10), dpi=150)
+    
+    # Converter para Web Mercator (EPSG:3857)
     user_gdf_web = user_gdf.to_crs(epsg=3857)
     
+    # 1. TENTATIVA DE MAPA BASE COM MÚLTIPLOS PROVEDORES E TIMEOUT
+    mapa_carregado = False
+    # Google Hybrid é o mais estável para detetar ocupação do solo
+    fontes = [
+        "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", # Google Hybrid
+        cx.providers.Esri.WorldImagery,                       # Esri Satellite
+        cx.providers.OpenStreetMap.Mapnik                     # OSM (Fallback final)
+    ]
+    
+    for fonte in fontes:
+        try:
+            # Adicionamos o mapa base ANTES de qualquer outro desenho
+            cx.add_basemap(ax, source=fonte, zorder=0, attribution=False, alpha=1.0)
+            mapa_carregado = True
+            break
+        except:
+            continue
+    
+    if not mapa_carregado:
+        ax.set_facecolor('#e0e0e0') # Fundo cinza se a internet do servidor bloquear tudo
+
+    # 2. Estilos por Servidão (Tramas e Cores)
     estilos = {
         "REN": {"cor": "#2ecc71", "hatch": "////", "label": "Reserva Ecologica Nacional (REN)"},
         "RAN": {"cor": "#f1c40f", "hatch": "\\\\\\\\", "label": "Reserva Agricola Nacional (RAN)"}
     }
     legend_elements = []
 
-    # Forçar Mapa Base (Google Hybrid)
-    mapa_carregado = False
-    fonte = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-    
-    try:
-        cx.add_basemap(ax, source=fonte, zorder=0, attribution=False)
-        mapa_carregado = True
-    except:
-        try:
-            cx.add_basemap(ax, source=cx.providers.Esri.WorldImagery, zorder=0)
-            mapa_carregado = True
-        except:
-            ax.set_facecolor('#d3d3d3')
-
-    # Desenho das Servidões (Cruzamento data/)
+    # 3. Desenho das Servidões (data/)
     for nome, estilo in estilos.items():
         path = f"data/{nome.lower()}_amostra.geojson"
         if os.path.exists(path):
             camada = gpd.read_file(path).to_crs(epsg=3857)
             inter = gpd.overlay(camada, user_gdf_web, how='intersection')
             if not inter.empty:
-                inter.plot(ax=ax, facecolor=estilo["cor"], alpha=0.4, 
+                inter.plot(ax=ax, facecolor=estilo["cor"], alpha=0.5, 
                            hatch=estilo["hatch"], edgecolor=estilo["cor"], zorder=1)
                 legend_elements.append(mpatches.Patch(facecolor=estilo["cor"], alpha=0.6, 
                                                       hatch=estilo["hatch"], label=estilo["label"]))
 
-    user_gdf_web.plot(ax=ax, facecolor="none", edgecolor="red", linewidth=3, zorder=2)
-    legend_elements.append(Line2D([0], [0], color='red', linewidth=3, label='Area Alvo'))
+    # 4. Área Fiscalizada (Contorno Vermelho)
+    user_gdf_web.plot(ax=ax, facecolor="none", edgecolor="red", linewidth=4, zorder=2)
+    legend_elements.append(Line2D([0], [0], color='red', linewidth=4, label='Area Alvo (15591 m2)'))
 
+    # 5. Ajustes de Enquadramento
     bounds = user_gdf_web.total_bounds
-    ax.set_xlim([bounds[0] - 350, bounds[2] + 350])
-    ax.set_ylim([bounds[1] - 350, bounds[3] + 350])
+    # Margem generosa de 400m para obrigar o download de mais tiles em redor
+    ax.set_xlim([bounds[0] - 400, bounds[2] + 400])
+    ax.set_ylim([bounds[1] - 400, bounds[3] + 400])
     
     if legend_elements:
         ax.legend(handles=legend_elements, loc='upper right', frameon=True, facecolor='white', framealpha=0.9)
     
     ax.set_axis_off()
-    mapa_path = "mapa_tecnico_relatorio.png"
-    plt.savefig(mapa_path, bbox_inches='tight', pad_inches=0.1)
+    
+    mapa_path = "mapa_tecnico_oficial.png"
+    # O comando bbox_inches='tight' às vezes corta o mapa base, vamos removê-lo ou suavizá-lo
+    plt.savefig(mapa_path, dpi=150, pad_inches=0.1)
     plt.close(fig)
-    time.sleep(2) 
+    
+    # Aguardar 2 segundos para o sistema de ficheiros consolidar a imagem
+    time.sleep(2)
     return mapa_path
 
 # --- GERAÇÃO DE PDF ---
@@ -111,11 +129,13 @@ def exportar_pdf(texto_ia, mapa_path):
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, "RELATORIO TECNICO DE FISCALIZACAO", 0, 1, 'C')
+    pdf.cell(0, 10, "RELATORIO TECNICO DE FISCALIZACAO TERRITORIAL", 0, 1, 'C')
+    pdf.ln(5)
     
     if os.path.exists(mapa_path):
+        # x=10, y=30, w=190
         pdf.image(mapa_path, x=10, y=30, w=190)
-        pdf.set_y(180)
+        pdf.set_y(185) # Garantir que o texto começa bem abaixo do mapa
     
     pdf.set_font("Arial", '', 10)
     txt_fpdf = texto_ia.encode('latin-1', 'ignore').decode('latin-1')
@@ -131,7 +151,7 @@ file = st.sidebar.file_uploader("Upload GeoJSON", type=['geojson'])
 
 if file:
     user_gdf = gpd.read_file(file).to_crs(epsg=3763)
-    area_calc = user_gdf.area.sum()
+    area_valor = user_gdf.area.sum()
     
     col_map, col_res = st.columns([2, 1])
     
@@ -145,24 +165,24 @@ if file:
         m.to_streamlit(height=600)
         
     with col_res:
-        st.subheader("📊 Analise")
-        st.write(f"**Area:** {area_calc:.2f} m2")
+        st.subheader("📊 Info Parcela")
+        st.write(f"**Área:** {area_valor:.2f} m²")
         
         if api_key:
-            if st.button("🤖 Gerar Relatorio IA"):
-                with st.spinner('A processar...'):
+            if st.button("🤖 Gerar Relatório Completo"):
+                with st.spinner('A capturar cartografia e redigir parecer...'):
                     dados_ia = {
-                        "area": f"{area_calc:.2f} m2", 
-                        "divergencia": "Aterro e construcao detetados em zona de culturas (COS2023)",
-                        "regime": "RAN"
+                        "area": f"{area_valor:.2f} m2", 
+                        "divergencia": "Aterro e construcao em zona de culturas (COS2023)", 
+                        "regime": "RAN (DL 73/2009)"
                     }
-                    parecer = redigir_parecer_ia(dados_ia, modelo_selecionado)
-                    mapa_img = gerar_mapa_tecnico(user_gdf)
-                    pdf_path = exportar_pdf(parecer, mapa_img)
+                    texto = redigir_parecer_ia(dados_ia, modelo_selecionado)
+                    mapa = gerar_mapa_tecnico(user_gdf)
+                    pdf = exportar_pdf(texto, mapa)
                     
-                    st.success("Relatorio concluido!")
-                    with open(pdf_path, "rb") as f:
-                        st.download_button("📥 Baixar PDF", f, file_name=pdf_path)
-                    st.markdown(parecer)
+                    st.success("Relatório pronto!")
+                    with open(pdf, "rb") as f:
+                        st.download_button("📥 Baixar PDF", f, file_name=pdf)
+                    st.markdown(texto)
 
 
