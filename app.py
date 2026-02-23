@@ -16,9 +16,9 @@ st.set_page_config(layout="wide", page_title="Fiscalização Territorial SIG", p
 
 # --- MOTOR DE ANÁLISE GEOSPACIAL ---
 def realizar_analise(user_gdf):
-    area_total = user_gdf.area.sum() [cite: 3]
+    area_total = user_gdf.area.sum()
     resultados = []
-    analise_uso_solo = "Ficheiro COS não encontrado." [cite: 4]
+    analise_uso_solo = "Ficheiro COS não encontrado."
     
     camadas = {
         "REN": "data/ren_amostra.geojson",
@@ -37,17 +37,17 @@ def realizar_analise(user_gdf):
                 perc = (area_int / area_total) * 100
                 
                 if nome == "COS":
-                    uso_oficial = inter['COS23_n4_L'].iloc[0] [cite: 5]
-                    uso_fiscal = inter['tipo_obra'].iloc[0] if 'tipo_obra' in inter.columns else "Não definido" [cite: 5]
+                    uso_oficial = inter['COS23_n4_L'].iloc[0]
+                    uso_fiscal = inter['tipo_obra'].iloc[0] if 'tipo_obra' in inter.columns else "Não definido"
                     if str(uso_oficial).strip().lower() != str(uso_fiscal).strip().lower():
-                        analise_uso_solo = f"⚠️ DIVERGÊNCIA: A COS classifica como '{uso_oficial}', mas detetado '{uso_fiscal}'." [cite: 5]
+                        analise_uso_solo = f"⚠️ DIVERGÊNCIA: A COS classifica como '{uso_oficial}', mas detetado '{uso_fiscal}'."
                     else:
                         analise_uso_solo = f"✅ COERENTE: Uso '{uso_fiscal}' coincide com a classificação da COS."
                 else:
                     info_jur = {
-                        "REN": {"lei": "DL 166/2008", "art": "Art. 20.º", "coima": "€2.000 a €44.800"}, [cite: 8, 9]
-                        "RAN": {"lei": "DL 73/2009", "art": "Art. 22.º", "coima": "€500 a €3.700 | €2.500 a €44.800"}, [cite: 8, 9]
-                        "Rede Natura": {"lei": "Lei 50/2006", "art": "DL 142/2008", "coima": "Até €5.000.000"} [cite: 8, 9]
+                        "REN": {"lei": "DL 166/2008", "art": "Art. 20.º", "coima": "€2.000 a €44.800"},
+                        "RAN": {"lei": "DL 73/2009", "art": "Art. 22.º", "coima": "€500 a €3.700 | €2.500 a €44.800"},
+                        "Rede Natura": {"lei": "Lei 50/2006", "art": "DL 142/2008", "coima": "Até €5.000.000"}
                     }
                     resultados.append({
                         "Regime": nome, "Area": round(area_int, 2), "Perc": round(perc, 1),
@@ -58,7 +58,6 @@ def realizar_analise(user_gdf):
 # --- FUNÇÃO CARTOGRÁFICA (CORREÇÃO DE MAPA BASE) ---
 def criar_mapa_imagem(user_gdf, resultados):
     fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
-    # Converter para Web Mercator para o contextily
     user_gdf_web = user_gdf.to_crs(epsg=3857)
     
     estilos = {
@@ -68,13 +67,11 @@ def criar_mapa_imagem(user_gdf, resultados):
     }
     legend_elements = []
 
-    # 1. Adicionar Mapa Base (Z-order 0)
     try:
         cx.add_basemap(ax, source=cx.providers.Esri.WorldImagery, zorder=0)
     except:
         pass
 
-    # 2. Desenhar Servidões (Z-order 1)
     for res in resultados:
         nome = res['Regime']
         path = f"data/{nome.lower().replace(' ', '_')}_amostra.geojson"
@@ -88,11 +85,9 @@ def criar_mapa_imagem(user_gdf, resultados):
                 legend_elements.append(mpatches.Patch(facecolor=estilo["cor"], edgecolor=estilo["cor"], 
                                                       hatch=estilo["hatch"], label=nome, alpha=0.6))
 
-    # 3. Desenhar Contorno Fiscalização (Z-order 2)
     user_gdf_web.plot(ax=ax, facecolor="none", edgecolor="red", linewidth=2.5, zorder=2)
     legend_elements.append(Line2D([0], [0], color='red', linewidth=2.5, label='Área Fiscalizada'))
 
-    # Zoom focado
     bounds = user_gdf_web.total_bounds
     ax.set_xlim([bounds[0] - 100, bounds[2] + 100])
     ax.set_ylim([bounds[1] - 100, bounds[3] + 100])
@@ -118,7 +113,6 @@ with col_map:
         user_gdf = gpd.read_file(uploaded_file).to_crs(epsg=3763)
         m.add_gdf(user_gdf, layer_name="Fiscalização", style={'color': 'red', 'weight': 3})
         
-        # FORÇAR ZOOM: Primeiro centralizar, depois fazer zoom ao GDF
         centroid = user_gdf.to_crs(epsg=4326).centroid.iloc[0]
         m.set_center(centroid.x, centroid.y, zoom=16)
         m.zoom_to_gdf(user_gdf)
@@ -128,25 +122,25 @@ with col_res:
     if uploaded_file:
         res, uso_txt, a_total = realizar_analise(user_gdf)
         st.subheader("📊 Painel")
-        st.metric("Área Fiscalizada", f"{a_total:.2f} m²") [cite: 3]
-        st.info(uso_txt) [cite: 5]
+        st.metric("Área Fiscalizada", f"{a_total:.2f} m²")
+        st.info(uso_txt)
         
         if st.button("📝 Gerar Relatório"):
             doc = Document()
-            doc.add_heading('Relatório de Fiscalização Territorial', 0) [cite: 1]
+            doc.add_heading('Relatório de Fiscalização Territorial', 0)
             img_path = criar_mapa_imagem(user_gdf, res)
             doc.add_picture(img_path, width=Inches(5.5))
             os.remove(img_path)
             
-            doc.add_heading('Análise Jurídica e Coimas', level=1) [cite: 6]
+            doc.add_heading('Análise Jurídica e Coimas', level=1)
             for r in res:
-                doc.add_heading(f"Regime: {r['Regime']}", level=2) [cite: 7]
-                doc.add_paragraph(f"Sobreposição: {r['Area']} m² ({r['Perc']}%)") [cite: 8]
-                doc.add_paragraph(f"Lei: {r['Lei']} | Artigo: {r['Artigo']}") [cite: 8]
-                doc.add_paragraph(f"Coima: {r['Coima']}") [cite: 9]
+                doc.add_heading(f"Regime: {r['Regime']}", level=2)
+                doc.add_paragraph(f"Sobreposição: {r['Area']} m² ({r['Perc']}%)")
+                doc.add_paragraph(f"Lei: {r['Lei']} | Artigo: {r['Artigo']}")
+                doc.add_paragraph(f"Coima: {r['Coima']}")
             
-            doc.add_heading('Medidas de Tutela', level=1) [cite: 10]
-            for m_tutela in ["Auto de Notícia", "Embargo", "Reposição"]: [cite: 11, 12, 13]
+            doc.add_heading('Medidas de Tutela', level=1)
+            for m_tutela in ["Auto de Notícia", "Embargo", "Reposição"]:
                 doc.add_paragraph(m_tutela, style='List Bullet')
             
             doc.save("Relatorio_Final.docx")
