@@ -6,5 +6,7 @@ fpdf2
 google-generativeai
 matplotlib
 contextily
+pyproj
 pyogrio
 rtree
+shapely
