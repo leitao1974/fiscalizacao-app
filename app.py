@@ -12,11 +12,11 @@ import os
 import time
 from datetime import date
 
-# 1. Configuração de Interface
-st.set_page_config(layout="wide", page_title="Fiscalização IA SIG", page_icon="🛡️")
+# 1. Configuracao de Interface
+st.set_page_config(layout="wide", page_title="Fiscalizacao IA SIG", page_icon="🛡️")
 
-# --- SIDEBAR: CONFIGURAÇÃO DINÂMICA DA IA ---
-st.sidebar.title("🔑 Configuração IA")
+# --- SIDEBAR: CONFIGURACAO DINAMICA DA IA ---
+st.sidebar.title("🔑 Configuracao IA")
 api_key = st.sidebar.text_input("Insere a tua Google API Key", type="password")
 
 modelo_selecionado = None
@@ -29,14 +29,14 @@ if api_key:
                             if 'generateContent' in m.supported_generation_methods]
         
         if available_models:
-            modelo_selecionado = st.sidebar.selectbox("Modelos Disponíveis", options=available_models)
+            modelo_selecionado = st.sidebar.selectbox("Modelos Disponiveis", options=available_models)
             st.sidebar.success(f"Conectado a: {modelo_selecionado}")
     except Exception as e:
         st.sidebar.error("Erro ao listar modelos. Verifica a tua API Key.")
 
-# --- MOTOR DE REDAÇÃO IA ---
+# --- MOTOR DE REDACAO IA ---
 def redigir_parecer_ia(dados, api_key, modelo):
-    if not api_key or not modelo: return "Configuração incompleta."
+    if not api_key or not modelo: return "Configuracao incompleta."
     model = genai.GenerativeModel(f"models/{modelo}")
     prompt = f"""
     Age como um fiscal do territorio em Portugal. Redigi um parecer tecnico formal:
@@ -47,32 +47,29 @@ def redigir_parecer_ia(dados, api_key, modelo):
     """
     return model.generate_content(prompt).text
 
-# --- FUNÇÃO DE MAPA (ESTABILIDADE DO MAPA BASE) ---
+# --- FUNCAO DE MAPA (RESOLUCAO DE COORDENADAS E FUNDO) ---
 def gerar_mapa_tecnico(user_gdf):
     plt.switch_backend('Agg')
-    # DPI alto ajuda a forçar o carregamento dos mosaicos (tiles)
     fig, ax = plt.subplots(figsize=(12, 10), dpi=150)
     
-    # Forçar ETRS89 / PT-TM06 (EPSG:3763)
+    # Forcar ETRS89 / PT-TM06 (EPSG:3763) se nao detectado
     if user_gdf.crs is None:
         user_gdf.set_crs(epsg=3763, inplace=True)
     
+    # Converter para Web Mercator (EPSG:3857) para o mapa base
     user_gdf_web = user_gdf.to_crs(epsg=3857)
     
-    # Renderização do Mapa Base (Tenta Google, Fallback Esri)
-    mapa_carregado = False
+    # Renderizacao do Mapa Base (Google Hybrid)
     try:
         cx.add_basemap(ax, source="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
                        attribution=False, alpha=1.0)
-        mapa_carregado = True
     except:
         try:
             cx.add_basemap(ax, source=cx.providers.Esri.WorldImagery, attribution=False)
-            mapa_carregado = True
         except:
             ax.set_facecolor('#dcdcdc')
 
-    # Cores e Tramas Técnicas
+    # Estilos de Servidões (RAN / REN)
     estilos = {
         "REN": {"cor": "#2ecc71", "hatch": "////", "label": "REN"},
         "RAN": {"cor": "#f1c40f", "hatch": "\\\\\\\\", "label": "RAN"}
@@ -90,11 +87,11 @@ def gerar_mapa_tecnico(user_gdf):
                 legend_elements.append(mpatches.Patch(facecolor=estilo["cor"], alpha=0.6, 
                                                       hatch=estilo["hatch"], label=nome))
 
-    # Desenho do Alvo
+    # Desenho do Alvo (Linha Vermelha)
     user_gdf_web.plot(ax=ax, facecolor="none", edgecolor="red", linewidth=3, zorder=5)
     legend_elements.append(Line2D([0], [0], color='red', linewidth=3, label='Alvo'))
 
-    # Zoom Forçado (Margem de 350m para garantir tiles)
+    # Zoom de Seguranca (350m)
     bounds = user_gdf_web.total_bounds
     ax.set_xlim([bounds[0] - 350, bounds[2] + 350])
     ax.set_ylim([bounds[1] - 350, bounds[3] + 350])
@@ -112,7 +109,7 @@ def gerar_mapa_tecnico(user_gdf):
     return mapa_path
 
 # --- INTERFACE ---
-st.title("🛡️ Fiscalização SIG Territorial")
+st.title("🛡️ Fiscalizacao SIG Territorial")
 file = st.sidebar.file_uploader("Upload GeoJSON (PT-TM06)", type=['geojson'])
 
 if file:
@@ -133,9 +130,9 @@ if file:
         st.subheader("📋 Painel")
         st.write(f"Area Afetada: **{area_m2:.2f} m2**")
         
-        if st.button("🤖 Gerar Relatório PDF"):
+        if st.button("🤖 Gerar Relatorio PDF"):
             if api_key and modelo_selecionado:
-                with st.spinner('A gerar relatório...'):
+                with st.spinner('A gerar relatorio...'):
                     texto = redigir_parecer_ia({"area": f"{area_m2:.2f}"}, api_key, modelo_selecionado)
                     mapa = gerar_mapa_tecnico(user_gdf)
                     
@@ -157,4 +154,3 @@ if file:
                         st.download_button("📥 Baixar PDF", f, file_name=pdf_out)
             else:
                 st.error("Configura a IA na barra lateral.")
-
