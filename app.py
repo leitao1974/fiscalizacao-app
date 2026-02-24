@@ -144,3 +144,4 @@ if st.button("🚀 Gerar Relatório e Auto de Notícia"):
                 st.download_button("📥 Descarregar Word (.docx)", docx, file_name=f"Fiscalizacao_{local}.docx")
             except Exception as e:
                 st.error(f"Erro: {e}")
+
