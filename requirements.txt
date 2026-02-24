@@ -1,5 +1,5 @@
 streamlit
-geopandas
+geopandas>=0.14.0
 pandas
 leafmap
 fpdf2
@@ -9,4 +9,4 @@ contextily
 pyproj
 pyogrio
 rtree
-shapely
+shapely>=2.0.0
