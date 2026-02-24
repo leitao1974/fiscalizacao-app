@@ -1,2 +1,4 @@
+libproj-dev
+gdal-bin
+libgdal-dev
 python3-rtree
-libsqlite3-0
