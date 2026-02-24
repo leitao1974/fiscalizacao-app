@@ -21,12 +21,22 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR CONFIG ---
+# --- SIDEBAR CONFIG (CHAVE DINÂMICA) ---
 st.sidebar.header("⚙️ Painel de Controlo")
 api_key = st.sidebar.text_input("Google API Key", type="password")
 
+modelo_selecionado = "gemini-1.5-pro" # Valor padrão
+
 if api_key:
     genai.configure(api_key=api_key)
+    try:
+        # Recupera dinamicamente os modelos disponíveis para a chave inserida
+        modelos_disponiveis = [m.name.replace('models/', '') for m in genai.list_models() 
+                               if 'generateContent' in m.supported_generation_methods]
+        modelo_selecionado = st.sidebar.selectbox("Motor de IA Ativo", modelos_disponiveis, index=0)
+        st.sidebar.success(f"Ligado ao motor: {modelo_selecionado}")
+    except Exception as e:
+        st.sidebar.error("Erro ao listar modelos. Verifica a tua API Key.")
 
 # --- LISTAS DE APOIO (REGIÃO CENTRO & CONSERVAÇÃO) ---
 zec_zpe_centro = [
@@ -77,6 +87,9 @@ with tab2:
         r_ap = st.checkbox("Áreas Protegidas (RNAP - DL 142/2008)")
         t_ap_nac = st.multiselect("Âmbito Nacional:", rnap_nacional) if r_ap else []
         t_ap_loc = st.multiselect("Âmbito Local/Regional:", rnap_local) if r_ap else []
+        
+        st.divider()
+        gravidade = st.select_slider("Gravidade da Infração", options=["Leve", "Grave", "Muito Grave"])
 
 conteudo_poap = ""
 with tab3:
@@ -128,14 +141,14 @@ def gerar_docx_final(texto_ia):
 st.divider()
 if st.button("🚀 Gerar Relatório de Fiscalização e Proposta de Auto"):
     if not api_key:
-        st.error("Introduza a Google API Key.")
+        st.error("Introduza a Google API Key na barra lateral.")
     else:
-        with st.spinner("A IA está a analisar o Regime de Conservação da Natureza e o POAP..."):
-            model = genai.GenerativeModel("gemini-1.5-pro")
+        with st.spinner(f"A utilizar o motor {modelo_selecionado} para análise jurídica..."):
+            model = genai.GenerativeModel(modelo_selecionado)
             
             prompt = f"""
             Age como Fiscal do Território e Jurista Especialista em Conservação da Natureza.
-            Redigi dois documentos: 1. RELATÓRIO DE FISCALIZAÇÃO e 2. PROPOSTA DE AUTO DE NOTÍCIA.
+            Redigi dois documentos separados: 1. RELATÓRIO DE FISCALIZAÇÃO e 2. PROPOSTA DE AUTO DE NOTÍCIA.
             
             Usa Português Formal, acentos e texto justificado. NÃO uses asteriscos.
             
@@ -149,7 +162,7 @@ if st.button("🚀 Gerar Relatório de Fiscalização e Proposta de Auto"):
             
             INSTRUÇÕES ESPECÍFICAS:
             - Analisa se a infração ocorre em solo da Rede Nacional de Áreas Protegidas e as implicações do DL 142/2008.
-            - No AUTO, tipifica a gravidade ({gravidade}) e indica as coimas (singulares e coletivas) baseadas na Lei n.º 50/2006 (Lei da Contraordenação Ambiental) e regimes específicos.
+            - No AUTO, tipifica a gravidade ({gravidade}) e indica as coimas (singulares e coletivas) baseadas na Lei n.º 50/2006 (Lei da Contraordenação Ambiental).
             - Propõe embargo imediato e reposição do terreno.
             """
             
@@ -163,4 +176,4 @@ if st.button("🚀 Gerar Relatório de Fiscalização e Proposta de Auto"):
                 with st.expander("Pré-visualização do Parecer"):
                     st.write(res.replace('*', ''))
             except Exception as e:
-                st.error(f"Erro na geração: {e}")
+                st.error(f"Erro na geração com o modelo {modelo_selecionado}: {e}")
