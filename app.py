@@ -9,101 +9,106 @@ import re
 from pypdf import PdfReader
 
 # 1. Configuração de Interface
-st.set_page_config(page_title="Fiscalização Territorial Integrada", layout="wide", page_icon="🛡️")
+st.set_page_config(page_title="Fiscalização Pro: Conservação e Território", layout="wide", page_icon="🛡️")
 
-# CSS para layout profissional e "chave dinâmica"
+# CSS para layout profissional
 st.markdown("""
     <style>
     .main { background-color: #f4f7f6; }
-    .stTabs [data-baseweb="tab"] { font-weight: bold; }
-    .stTabs [aria-selected="true"] { border-bottom: 2px solid #1b5e20; color: #1b5e20; }
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
+    .stTabs [data-baseweb="tab"] { background-color: #e8f5e9; border-radius: 4px; padding: 10px 20px; font-weight: bold; }
+    .stTabs [aria-selected="true"] { background-color: #2e7d32 !important; color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- RECUPERAÇÃO DA CHAVE DINÂMICA (MODELOS) ---
+# --- SIDEBAR CONFIG ---
 st.sidebar.header("⚙️ Painel de Controlo")
 api_key = st.sidebar.text_input("Google API Key", type="password")
 
-modelo_selecionado = "gemini-1.5-pro" # Default para análise complexa
-
 if api_key:
     genai.configure(api_key=api_key)
-    try:
-        # Lista dinamicamente os modelos disponíveis na tua conta
-        modelos_disponiveis = [m.name.replace('models/', '') for m in genai.list_models() 
-                               if 'generateContent' in m.supported_generation_methods]
-        modelo_selecionado = st.sidebar.selectbox("Motor de IA Ativo (Chave Dinâmica)", modelos_disponiveis, index=0)
-        st.sidebar.success(f"Ligado ao motor: {modelo_selecionado}")
-    except Exception as e:
-        st.sidebar.error("Erro ao listar modelos. Verifica a tua API Key.")
 
-# --- LISTAS DE APOIO ---
-zec_zpe_centro = ["ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Sicó/Alvaiázere", "ZEC Paul de Arzila", "ZEC Serra da Lousã", "ZEC Malcata", "ZPE Estuário do Mondego", "ZPE Ria de Aveiro"]
-rnap_centro = ["P.N. Serra da Estrela", "P.N. Serras de Aire e Candeeiros", "R.N. Paul de Arzila", "R.N. Serra da Malcata", "R.N. Berlengas"]
-tipos_residuos = ["RCD (Resíduos de Construção e Demolição)", "Terras e Rochas", "Misturas de Resíduos Perigosos", "Pneus/Óleos"]
+# --- LISTAS DE APOIO (REGIÃO CENTRO & CONSERVAÇÃO) ---
+zec_zpe_centro = [
+    "ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Sicó/Alvaiázere", 
+    "ZEC Paul de Arzila", "ZEC Serra da Lousã", "ZEC Malcata", "ZEC Rio Paiva",
+    "ZPE Estuário do Mondego", "ZPE Ria de Aveiro", "ZPE Paul de Taipal"
+]
+
+rnap_nacional = [
+    "Parque Natural da Serra da Estrela", "Parque Natural das Serras de Aire e Candeeiros",
+    "Parque Natural do Tejo Internacional", "Reserva Natural do Paul de Arzila",
+    "Reserva Natural da Serra da Malcata", "Reserva Natural das Berlengas"
+]
+
+rnap_local = [
+    "Paisagem Protegida Local do Monte de S. Bartolomeu",
+    "Reserva Natural Local do Paul da Tornada",
+    "Paisagem Protegida Local das Serras do Socorro e Archeira"
+]
 
 # --- INTERFACE ---
-st.title("🛡️ Sistema de Fiscalização e Contraordenações")
-st.markdown("Análise jurídica multidisciplinar: **Solo, Água, Resíduos e Conservação**.")
+st.title("🛡️ Sistema de Apoio à Fiscalização e Auto de Notícia")
+st.markdown("Análise integrada: **RAN, REN, Rede Natura 2000 e Conservação da Natureza (DL 142/2008)**.")
 
-tab1, tab2, tab3 = st.tabs(["📍 Localização e Factos", "⚖️ Tipologias Jurídicas", "📑 Análise de Planos (POAP)"])
+tab1, tab2, tab3 = st.tabs(["📍 Ocorrência", "⚖️ Enquadramento Legal", "📑 Planos de Ordenamento"])
 
 with tab1:
     col1, col2 = st.columns(2)
     with col1:
-        local = st.text_input("Concelho / Localidade", "Alenquer")
+        local = st.text_input("Localização / Concelho", "Alenquer")
         area = st.number_input("Área Afetada (m²)", value=15591.67, format="%.2f")
     with col2:
-        ocupacao = st.text_area("Descrição da Ação", "Deposição de materiais e alteração da morfologia do solo em zona sensível.")
+        ocupacao = st.text_area("Descrição da Ação Detetada", "Execução de aterro com deposição de materiais inertes e alteração da morfologia do solo.")
 
 with tab2:
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
     with c1:
-        st.subheader("🌾 Ordenamento")
-        r_ran = st.checkbox("RAN (DL 73/2009)")
-        r_ren = st.checkbox("REN (DL 166/2008)")
-        r_rjaia = st.checkbox("RJAIA (Impacte Ambiental)")
+        st.subheader("Regimes Agrícolas e Ecológicos")
+        r_ran = st.checkbox("RAN (Decreto-Lei n.º 73/2009)")
+        r_ren = st.checkbox("REN (Decreto-Lei n.º 166/2008)")
+        t_ren = st.multiselect("Tipologias REN:", ["Encostas", "Infiltração Máxima", "Cursos de Água"]) if r_ren else []
+    
     with c2:
-        st.subheader("🌿 Conservação (DL 142/2008)")
+        st.subheader("Conservação da Natureza")
         r_rn2000 = st.checkbox("Rede Natura 2000 (ZEC/ZPE)")
-        t_rn2000 = st.multiselect("Sítios:", zec_zpe_centro) if r_rn2000 else []
-        r_ap = st.checkbox("Áreas Protegidas (RNAP)")
-        t_ap = st.multiselect("Parques/Reservas:", rnap_centro) if r_ap else []
-    with c3:
-        st.subheader("💧 Água e 🗑️ Resíduos")
-        r_agua = st.checkbox("Lei da Água (Domínio Hídrico)")
-        r_residuos = st.checkbox("Resíduos (RGGR)")
-        t_residuos = st.multiselect("Tipos:", tipos_residuos) if r_residuos else []
-
-    st.divider()
-    infrator = st.text_input("Infrator", "Em averiguação")
-    gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
+        t_rn2000 = st.multiselect("Zonas Selecionadas:", zec_zpe_centro) if r_rn2000 else []
+        
+        r_ap = st.checkbox("Áreas Protegidas (RNAP - DL 142/2008)")
+        t_ap_nac = st.multiselect("Âmbito Nacional:", rnap_nacional) if r_ap else []
+        t_ap_loc = st.multiselect("Âmbito Local/Regional:", rnap_local) if r_ap else []
 
 conteudo_poap = ""
 with tab3:
-    st.write("Carregue o regulamento (PDF) para que a IA cite os artigos específicos.")
-    arq = st.file_uploader("Upload PDF (POAP/PDM/RJCNB)", type=['pdf'])
-    if arq:
-        reader = PdfReader(arq)
-        conteudo_poap = "\n".join([p.extract_text() for p in reader.pages[:10]])
-        st.success("Plano carregado com sucesso.")
+    st.write("Carregue o Plano de Ordenamento (POAP) ou Plano de Gestão para fundamentação automática.")
+    arquivo_poap = st.file_uploader("Upload Regulamento (PDF)", type=['pdf'])
+    if arquivo_poap:
+        reader = PdfReader(arquivo_poap)
+        conteudo_poap = "\n".join([page.extract_text() for page in reader.pages[:15]])
+        st.success(f"Plano lido com sucesso ({len(reader.pages)} páginas).")
 
-# --- MOTOR DOCX ---
-def gerar_docx_profissional(texto_ia):
+# --- MOTOR DOCX PROFISSIONAL ---
+def gerar_docx_final(texto_ia):
     doc = Document()
     style = doc.styles['Normal']
     style.font.name = 'Arial'
     style.font.size = Pt(11)
+
     for section in doc.sections:
         section.top_margin, section.bottom_margin = Cm(2.5), Cm(2.5)
         section.left_margin, section.right_margin = Cm(3.0), Cm(2.5)
 
-    linhas = texto_ia.replace('*', '').replace('#', '').split('\n')
-    for linha in linhas:
+    # Limpeza de formatação Markdown da IA
+    texto_formatado = texto_ia.replace('*', '').replace('#', '')
+    
+    for linha in texto_formatado.split('\n'):
         linha = linha.strip()
         if not linha: continue
+        
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        
+        # Detecção de Capítulos e Subcapítulos para BOLD
         if re.match(r'^(\d+\.|RELATÓRIO|PROPOSTA|AUTO|FUNDAMENTAÇÃO|CONCLUSÃO)', linha.upper()):
             run = p.add_run(linha)
             run.bold = True
@@ -113,38 +118,49 @@ def gerar_docx_profissional(texto_ia):
             run.bold = True
         else:
             p.add_run(linha)
-    
-    buf = BytesIO()
-    doc.save(buf)
-    buf.seek(0)
-    return buf
 
-# --- GERAÇÃO ---
-if st.button("🚀 Gerar Documentação de Fiscalização (Word)"):
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
+# --- GERAÇÃO DOS DOCUMENTOS ---
+st.divider()
+if st.button("🚀 Gerar Relatório de Fiscalização e Proposta de Auto"):
     if not api_key:
-        st.error("Insere a Google API Key.")
+        st.error("Introduza a Google API Key.")
     else:
-        with st.spinner(f"A utilizar o motor {modelo_selecionado} para análise jurídica..."):
-            model = genai.GenerativeModel(modelo_selecionado)
+        with st.spinner("A IA está a analisar o Regime de Conservação da Natureza e o POAP..."):
+            model = genai.GenerativeModel("gemini-1.5-pro")
+            
             prompt = f"""
-            Age como Fiscal e Jurista Especialista em Ambiente e Ordenamento.
-            Elabora um Relatório de Fiscalização e uma Proposta de Auto de Notícia.
-            PORTUGUÊS FORMAL COM ACENTOS. TEXTO JUSTIFICADO. SEM ASTERISCOS.
+            Age como Fiscal do Território e Jurista Especialista em Conservação da Natureza.
+            Redigi dois documentos: 1. RELATÓRIO DE FISCALIZAÇÃO e 2. PROPOSTA DE AUTO DE NOTÍCIA.
             
-            DADOS:
-            - Local: {local}. Área: {area} m2. Ação: {ocupacao}.
-            - Regimes: RAN={r_ran}, REN={r_ren}, RJAIA={r_rjaia}, RN2000={t_rn2000}, Áreas Protegidas={t_ap}, Água={r_agua}, Resíduos={t_residuos}.
-            - Conteúdo do Plano: {conteudo_poap[:2000]}
+            Usa Português Formal, acentos e texto justificado. NÃO uses asteriscos.
             
-            ESTRUTURA:
-            1. RELATÓRIO DE FISCALIZAÇÃO: Analisa a violação face a todos os regimes selecionados e ao Plano de Ordenamento.
-            2. PROPOSTA DE AUTO DE NOTÍCIA: Tipifica as infrações. Indica coimas mín/máx de acordo com a Lei 50/2006 (Quadro Ambiental) e regimes específicos. Propõe embargo e reposição.
+            CONTEXTO LEGAL:
+            - Local: {local}. Área: {area} m2. Ocupação: {ocupacao}.
+            - Regimes: RAN={r_ran}, REN={t_ren}, ZEC/ZPE={t_rn2000}, Áreas Protegidas={t_ap_nac + t_ap_loc}.
+            - Diploma Base: Regime Jurídico da Conservação da Natureza (DL 142/2008).
+            
+            CONTEÚDO DO PLANO DE ORDENAMENTO (POAP):
+            {conteudo_poap[:2500]}
+            
+            INSTRUÇÕES ESPECÍFICAS:
+            - Analisa se a infração ocorre em solo da Rede Nacional de Áreas Protegidas e as implicações do DL 142/2008.
+            - No AUTO, tipifica a gravidade ({gravidade}) e indica as coimas (singulares e coletivas) baseadas na Lei n.º 50/2006 (Lei da Contraordenação Ambiental) e regimes específicos.
+            - Propõe embargo imediato e reposição do terreno.
             """
             
             try:
                 res = model.generate_content(prompt).text
-                docx = gerar_docx_profissional(res)
-                st.success("Documentação gerada com sucesso!")
-                st.download_button("📥 Descarregar Word (.docx)", docx, file_name=f"Fiscalizacao_{local}.docx")
+                docx_file = gerar_docx_final(res)
+                st.success("Análise concluída com sucesso!")
+                st.download_button("📥 Descarregar Documentos Word", docx_file, 
+                                   file_name=f"Fiscalizacao_{local}.docx",
+                                   mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                with st.expander("Pré-visualização do Parecer"):
+                    st.write(res.replace('*', ''))
             except Exception as e:
-                st.error(f"Erro na IA: {e}")
+                st.error(f"Erro na geração: {e}")
