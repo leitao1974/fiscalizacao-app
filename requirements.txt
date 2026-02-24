@@ -1,11 +1,12 @@
 streamlit
 geopandas
+pandas
 leafmap
-folium
+fpdf2
+google-generativeai
 matplotlib
 contextily
-fpdf
-google-generativeai
-pyarrow
+pyproj
 pyogrio
 rtree
+shapely
