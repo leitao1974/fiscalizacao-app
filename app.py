@@ -8,17 +8,17 @@ import re
 from pypdf import PdfReader
 
 # 1. Configuração de Interface
-st.set_page_config(page_title="Fiscalização Pro: Sistema Integral", layout="wide", page_icon="🛡️")
+st.set_page_config(page_title="Fiscalização Pro: Matriz Jurídica Total", layout="wide", page_icon="🛡️")
 
 st.markdown("""
     <style>
-    .stCheckbox { margin-bottom: -15px; }
+    .stCheckbox { margin-bottom: -15px; font-size: 13px; }
     .stTabs [data-baseweb="tab"] { font-weight: bold; }
-    .stTextArea textarea { background-color: #ffffff; }
+    .stTextArea textarea { background-color: #f9f9f9; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR: CHAVE DINÂMICA ---
+# --- SIDEBAR: CONFIGURAÇÃO ---
 st.sidebar.header("⚙️ Configuração")
 api_key = st.sidebar.text_input("Google API Key", type="password")
 modelo_selecionado = "gemini-1.5-pro"
@@ -29,107 +29,162 @@ if api_key:
         modelos = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         modelo_selecionado = st.sidebar.selectbox("Motor de IA", modelos, index=0)
     except:
-        st.sidebar.error("Erro na API Key.")
+        st.sidebar.error("Verifica a API Key.")
 
-# --- BASE DE DADOS DE FISCALIZAÇÃO ---
+# --- BASE DE DATA TÉCNICA ---
+tipologias_ren = ["Áreas de Proteção de Encostas", "Áreas de Infiltração Máxima", "Zonas Adjacentes", "Cursos de Água", "Cabeceiras de linhas de água", "Albufeiras", "Zonas Ameaçadas pelas Cheias", "Arribas", "Dunas", "Praias", "Estuários"]
 
-tipologias_ren = ["Áreas de Proteção de Encostas", "Áreas de Infiltração Máxima", "Zonas Adjacentes", "Cursos de Água", "Cabeceiras de linhas de água", "Albufeiras", "Zonas Ameaçadas pelas Cheias", "Zonas Ameaçadas pelo Mar", "Arribas", "Dunas Litorais", "Praias", "Estuários e Áreas Húmidas"]
+# Infrações REN (DL 166/2008)
+inf_ren = [
+    "🚫 (Int.) Loteamentos e obras de urbanização",
+    "🚫 (Int.) Obras de edificação (construção nova)",
+    "🚫 (Int.) Impermeabilização de solos e revestimentos asfálticos",
+    "🚫 (Int.) Escavações e aterros (alteração do perfil natural)",
+    "🚫 (Int.) Destruição do coberto vegetal e abate de árvores",
+    "🚫 (Int.) Alteração da rede de drenagem natural",
+    "⚠️ (Cond.) Obras de reconstrução/ampliação sem parecer CCDR",
+    "⚠️ (Cond.) Vias de comunicação/infraestruturas sem Título de Interesse Público"
+]
 
-zec_zpe_centro = ["ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Sicó/Alvaiázere", "ZEC Paul de Arzila", "ZEC Serra da Lousã", "ZEC Malcata", "ZEC Rio Zêzere", "ZEC Albufeira de Castelo do Bode", "ZEC Rio Paiva", "ZEC Douro Internacional", "ZPE Paul do Boquilobo", "ZPE Estuário do Mondego", "ZPE Douro Internacional", "ZPE Ria de Aveiro", "ZPE Beira Interior"]
+# Infrações RAN (DL 73/2009)
+inf_ran = [
+    "🚫 (Int.) Utilização de terras para fins não agrícolas",
+    "🚫 (Int.) Ações que destruam ou degradem o potencial agrícola",
+    "🚫 (Int.) Impermeabilização definitiva de solos de classe A ou B",
+    "⚠️ (Cond.) Construção de habitação própria de agricultor sem parecer DRAP",
+    "⚠️ (Cond.) Instalação de unidades agroindustriais sem parecer vinculado"
+]
 
-areas_protegidas = ["P.N. Douro Internacional (PNDI)", "P.N. Serra da Estrela (PNSE)", "P.N. Serras de Aire e Candeeiros (PNSAC)", "P.N. Tejo Internacional", "R.N. Paul do Boquilobo", "R.N. Paul de Arzila", "R.N. Serra da Malcata", "R.N. Berlengas", "M.N. Pegadas de Dinossáurios"]
+# Património Cultural (Lei 107/2001)
+inf_patrimonio = [
+    "🚫 (Int.) Destruição ou alteração de imóvel classificado",
+    "🚫 (Int.) Execução de obras sem acompanhamento arqueológico obrigatório",
+    "⚠️ (Cond.) Obras em Zona Geral de Proteção (50m) sem parecer da tutela",
+    "⚠️ (Cond.) Intervenções em imóveis em vias de classificação sem autorização"
+]
 
-zonamentos_poap = ["Reserva Integral", "Reserva Parcial", "Proteção Parcial Tipo I", "Proteção Parcial Tipo II", "Proteção Complementar I", "Proteção Complementar II", "Área de Intervenção Específica"]
-
-art9_natura = ["a) Obras construção civil (limites área/ampliação)", "b) Alteração uso solo > 5 ha", "c) Modificações coberto vegetal > 5 ha", "d) Alterações morfologia solo (extra agrícolas)", "e) Alteração zonas húmidas/marinhas", "f) Deposição sucatas/resíduos", "g) Novas vias/alargamento", "h) Infraestruturas (energia/telecom)", "i) Atividades motorizadas/competições", "j) Alpinismo/Escalada", "l) Reintrodução espécies fauna/flora"]
+art9_natura = [
+    "a) Obras construção civil (limites área/ampliação)",
+    "b) Alteração uso solo > 5 ha",
+    "c) Modificações coberto vegetal > 5 ha",
+    "d) Alterações morfologia solo (extra agrícolas)",
+    "e) Alteração zonas húmidas/marinhas",
+    "f) Deposição sucatas/resíduos",
+    "g) Novas vias/alargamento",
+    "h) Infraestruturas (energia/telecom)",
+    "i) Atividades motorizadas/competições",
+    "l) Reintrodução espécies fauna/flora"
+]
 
 # --- INTERFACE ---
-st.title("🛡️ Sistema Integral de Fiscalização Territorial e Ambiental")
+st.title("🛡️ Sistema Integral de Fiscalização: Matriz de Contraordenações")
 
-tab1, tab2, tab3, tab4 = st.tabs(["📍 Ocorrência", "🌿 Natureza e Conservação", "🌾 Solo e Património", "📑 Gerar Documentação"])
+tab1, tab2, tab3, tab4 = st.tabs(["📍 Local & Infrator", "🌿 Conservação & Natura", "🌾 REN, RAN & Património", "📑 Documentação"])
 
 with tab1:
     c1, c2 = st.columns(2)
     with c1:
-        st.subheader("📍 Localização")
-        local = st.text_input("Local/Concelho", "Médio Tejo / Região Centro")
-        area_m2 = st.number_input("Área Afetada (m²)", value=15591.67)
-        desc_visual = st.text_area("Descrição visual das ações detetadas", "Deteção de aterro e movimentação de terras...")
+        local = st.text_input("Localização/Concelho", "Região Centro")
+        area_m2 = st.number_input("Área Afetada (m²)", value=1000.0)
+        desc_visual = st.text_area("Descrição visual das ações", "Deteção de intervenção ilícita...")
     with c2:
-        st.subheader("👤 Infrator")
-        infrator = st.text_input("Nome/Entidade", "Em averiguação")
-        tipo_entidade = st.radio("Tipo", ["Pessoa Singular", "Pessoa Coletiva"])
-        nif_infrator = st.text_input("NIF/NIPC", "000000000")
+        infrator = st.text_input("Nome do Infrator", "Em averiguação")
+        tipo_entidade = st.radio("Entidade", ["Pessoa Singular", "Pessoa Coletiva"])
+        nif = st.text_input("NIF/NIPC", "000000000")
 
 with tab2:
-    st.info("Regime Jurídico da Conservação da Natureza e Rede Natura 2000")
-    col_nat1, col_nat2 = st.columns(2)
-    with col_nat1:
-        st.success("**Rede Natura 2000 (ZEC/ZPE)**")
-        sel_zec = st.multiselect("Sítios Selecionados:", zec_zpe_centro)
-        st.write("**Condicionantes Artigo 9.º (DL 140/99):**")
+    st.info("**Rede Natura 2000 & Biodiversidade**")
+    col_n1, col_n2 = st.columns(2)
+    with col_n1:
+        st.write("**Condicionantes Art. 9.º (DL 140/99):**")
         sel_art9 = [i for i in art9_natura if st.checkbox(i)]
-        outros_natura = st.text_area("Outras Interdições/Condicionantes Natura 2000:")
-    with col_nat2:
-        st.success("**Áreas Protegidas (RNAP)**")
-        sel_ap = st.multiselect("Parques e Reservas:", areas_protegidas)
-        sel_zonamento = st.multiselect("Zonamento (POAP):", zonamentos_poap)
-        outros_ap = st.text_area("Outras Interdições Áreas Protegidas (DL 142/2008):")
+    with col_n2:
+        st.write("**Áreas Protegidas & Zonamento (DL 142/2008):**")
+        sel_zonamento = st.multiselect("Zonamento POAP:", ["Reserva Integral", "Reserva Parcial", "Proteção Parcial I", "Proteção Parcial II", "Proteção Complementar"])
+        st.write("---")
+        upload_poap = st.file_uploader("📂 Carregar Plano de Ordenamento (POAP) - PDF", type=['pdf'], key="poap_upload")
 
 with tab3:
-    col_solo1, col_solo2 = st.columns(2)
-    with col_solo1:
-        st.info("**🌾 RAN & REN**")
-        sel_ren_tipo = st.multiselect("Tipologias REN:", tipologias_ren)
-        int_ren_ran = st.text_area("Interdições/Condicionantes detetadas (RAN/REN):", placeholder="Ex: Construção em zona de cheia; Impermeabilização de solo RAN...")
-    with col_solo2:
-        st.warning("**🏛️ Património, Águas e Resíduos**")
-        r_pat = st.checkbox("Património Cultural (Lei 107/2001)")
-        t_pat = st.text_area("Descrição infração Património:") if r_pat else ""
-        r_agua = st.checkbox("Domínio Hídrico / Resíduos")
-        t_agua = st.text_area("Descrição infração Água/Resíduos:") if r_agua else ""
+    st.info("**Regimes Territoriais e Patrimoniais**")
+    col_r1, col_r2, col_r3 = st.columns(3)
     
-    st.subheader("📝 Outras Infrações não Tipificadas")
-    outros_geral = st.text_area("Indique quaisquer outras normas violadas (Ex: PDM):")
+    with col_r1:
+        st.subheader("💧 REN (DL 166/2008)")
+        sel_ren_tipos = st.multiselect("Tipologias afetadas:", tipologias_ren)
+        sel_ren_inf = [i for i in inf_ren if st.checkbox(i)]
+        
+    with col_r2:
+        st.subheader("🌾 RAN (DL 73/2009)")
+        sel_ran_inf = [i for i in inf_ran if st.checkbox(i)]
+
+    with col_r3:
+        st.subheader("🏛️ Património (Lei 107/2001)")
+        sel_pat_inf = [i for i in inf_patrimonio if st.checkbox(i)]
+
     st.divider()
-    gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
+    outros_txt = st.text_area("📝 Outras infrações ou detalhes (Ex: PDM, RGEU, Águas):")
+    gravidade = st.select_slider("Gravidade Proposta:", options=["Leve", "Grave", "Muito Grave"])
+
+# --- PROCESSAMENTO DOCX ---
+def gerar_docx(texto_final):
+    doc = Document()
+    for s in doc.sections:
+        s.top_margin, s.bottom_margin = Cm(2.5), Cm(2.5)
+        s.left_margin, s.right_margin = Cm(3.0), Cm(2.5)
+    
+    for linha in texto_final.replace('*', '').replace('#', '').split('\n'):
+        linha = linha.strip()
+        if not linha: continue
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        if re.match(r'^(\d+\.|RELATÓRIO|PROPOSTA|AUTO|INFRAÇÃO|DADOS|FUNDAMENTAÇÃO|CONCLUSÃO)', linha.upper()):
+            p.add_run(linha).bold = True
+        else:
+            p.add_run(linha)
+    
+    buf = BytesIO()
+    doc.save(buf)
+    buf.seek(0)
+    return buf
 
 with tab4:
-    arquivo_pdf = st.file_uploader("Upload de Regulamento/POAP", type=['pdf'])
-    pdf_text = ""
-    if arquivo_pdf:
-        reader = PdfReader(arquivo_pdf)
-        pdf_text = "\n".join([p.extract_text() for p in reader.pages[:10]])
-    
-    if st.button("🚀 Gerar Documentação Final"):
-        if not api_key: st.error("Insira a API Key.")
+    if st.button("🚀 Gerar Relatório e Auto de Notícia"):
+        if not api_key:
+            st.error("Insira a API Key.")
         else:
-            with st.spinner("A fundir toda a base de dados jurídica..."):
+            with st.spinner("A fundir matrizes de interdição com enquadramento legal..."):
+                poap_text = ""
+                if upload_poap:
+                    reader = PdfReader(upload_poap)
+                    poap_text = "\n".join([p.extract_text() for p in reader.pages[:5]])
+                
                 model = genai.GenerativeModel(modelo_selecionado)
                 prompt = f"""
                 Age como Fiscal Sénior e Jurista. Redigi Relatório e Auto de Notícia.
-                DADOS: Local {local}, Área {area_m2}m2, Infrator {infrator} ({tipo_entidade}, NIF: {nif_infrator}).
+                DADOS: Local {local}, Área {area_m2}m2, Infrator {infrator} ({tipo_entidade}, NIF {nif}).
                 
-                ENQUADRAMENTO:
-                - Rede Natura: {sel_zec}. Artigo 9º DL 140/99: {sel_art9}. Outros: {outros_natura}
-                - Áreas Protegidas: {sel_ap}. Zonamento: {sel_zonamento}. Outros: {outros_ap}
-                - REN: {sel_ren_tipo}. RAN/REN Detalhes: {int_ren_ran}
-                - Património: {t_pat}. Águas/Resíduos: {t_agua}
-                - Outros: {outros_geral}
-                - Regulamento PDF: {pdf_text[:1500]}
+                INFRAÇÕES SELECIONADAS:
+                - Natura 2000 (Art. 9º DL 140/99): {sel_art9}
+                - Áreas Protegidas (Zonamento): {sel_zonamento}
+                - REN (Tipologias e Infrações): {sel_ren_tipos} | {sel_ren_inf}
+                - RAN: {sel_ran_inf}
+                - Património: {sel_pat_inf}
+                - Outros/Detalhes: {outros_txt}
+                - Texto Extraído do POAP: {poap_text[:1000]}
 
-                INSTRUÇÕES:
-                1. No RELATÓRIO: Cita DL 140/99, DL 142/2008, DL 166/2008, DL 73/2009 e Lei 107/2001.
-                2. No AUTO: Tipifica infrações e define coimas para gravidade {gravidade} e entidade {tipo_entidade} (Lei 50/2006).
-                3. Texto JUSTIFICADO, BOLD nos capítulos, sem asteriscos.
+                FUNDAMENTAÇÃO:
+                1. No RELATÓRIO: Cruza as infrações. Explica porque é que a ação viola as interdições/condicionantes selecionadas.
+                2. No AUTO: Tipifica contraordenações e define coimas para gravidade {gravidade} e entidade {tipo_entidade} (Lei 50/2006).
+                3. Estilo: Formal, Português de Portugal, capítulos a BOLD.
                 """
                 try:
-                    res = model.generate_content(prompt).text
-                    # Função de exportação docx aqui...
-                    st.success("Gerado!")
-                    st.download_button("📥 Descarregar Word", BytesIO(), file_name="Fiscalizacao.docx") # Simplificado para exemplo
-                    st.write(res)
-                except Exception as e: st.error(f"Erro: {e}")
+                    resultado = model.generate_content(prompt).text
+                    ficheiro = gerar_docx(resultado)
+                    st.success("Documentação gerada com sucesso!")
+                    st.download_button("📥 Descarregar Word (.docx)", ficheiro, file_name=f"Auto_{local}.docx")
+                    st.write(resultado)
+                except Exception as e:
+                    st.error(f"Erro: {e}")
 
 
 
