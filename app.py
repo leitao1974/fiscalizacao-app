@@ -8,13 +8,19 @@ import re
 from pypdf import PdfReader
 
 # 1. Configuração de Interface
-st.set_page_config(page_title="Fiscalização Pro: DL 140/99 Art. 9.º", layout="wide", page_icon="🛡️")
+st.set_page_config(page_title="Sistema Integrado de Fiscalização Território/Ambiente", layout="wide", page_icon="🛡️")
 
-# Estilo para leitura técnica
-st.markdown("<style>.stCheckbox { margin-bottom: -15px; }</style>", unsafe_allow_html=True)
+# Estilo para interface profissional e compacta
+st.markdown("""
+    <style>
+    .stCheckbox { margin-bottom: -15px; }
+    .stTabs [data-baseweb="tab"] { font-weight: bold; }
+    .stTabs [aria-selected="true"] { border-bottom: 2px solid #2e7d32; }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- SIDEBAR CONFIG ---
-st.sidebar.header("⚙️ Painel de Controlo")
+# --- SIDEBAR: CHAVE DINÂMICA ---
+st.sidebar.header("⚙️ Configuração")
 api_key = st.sidebar.text_input("Google API Key", type="password")
 modelo_selecionado = "gemini-1.5-pro"
 
@@ -26,52 +32,100 @@ if api_key:
     except:
         st.sidebar.error("Verifica a API Key.")
 
-# --- MATRIZ DE CONDICIONANTES DL 140/99 (ARTIGO 9.º) ---
-condicionantes_140_99 = [
-    "a) Obras de construção civil fora de perímetros urbanos (excedendo limites de ampliação/área)",
+# --- MATRIZES DE INFRAÇÕES (INTEGRAÇÃO TOTAL) ---
+
+# A. Rede Natura 2000 (DL 140/99 - Artigo 9.º Completo)
+inf_natura_art9 = [
+    "a) Obras de construção civil (fora perímetros urbanos / limites ampliação)",
     "b) Alteração do uso atual do solo > 5 ha",
-    "c) Modificações de coberto vegetal (agrícola/florestal) > 5 ha (ou continuidade < 500m)",
-    "d) Alterações à morfologia do solo (extra atividades normais agrícolas/florestais)",
-    "e) Alteração do uso, configuração ou topografia de zonas húmidas ou marinhas",
+    "c) Modificações de coberto vegetal (agrícola/florestal) > 5 ha",
+    "d) Alterações à morfologia do solo (extra agrícolas/florestais)",
+    "e) Alteração de zonas húmidas ou marinhas (configuração/topografia)",
     "f) Deposição de sucatas e de resíduos sólidos e líquidos",
-    "g) Abertura de novas vias de comunicação ou alargamento das existentes",
-    "h) Instalação de infraestruturas (energia, telecomunicações, saneamento, gás) fora de perímetros urbanos",
-    "i) Atividades motorizadas organizadas e competições desportivas fora de perímetros urbanos",
+    "g) Abertura de novas vias de comunicação ou alargamento",
+    "h) Instalação de infraestruturas (energia, telecom, saneamento)",
+    "i) Atividades motorizadas organizadas / competições",
     "j) Prática de alpinismo, escalada e montanhismo",
-    "l) Reintrodução de espécies indígenas da fauna e da flora selvagens"
+    "l) Reintrodução de espécies indígenas fauna/flora"
+]
+
+# B. REN (DL 166/2008)
+inf_ren = [
+    "Interdição: Obras de urbanização / Edificação",
+    "Interdição: Impermeabilização de solos",
+    "Interdição: Destruição do coberto vegetal",
+    "Interdição: Alteração da rede de drenagem natural",
+    "Condicionada: Reconstrução/Ampliação sem parecer CCDR"
+]
+
+# C. RAN (DL 73/2009)
+inf_ran = [
+    "Interdição: Utilização de solo para fins não agrícolas",
+    "Interdição: Ações que destruam o potencial agrícola",
+    "Condicionada: Obras de utilidade pública sem despacho reconhecimento"
+]
+
+# D. Património Cultural (Lei 107/2001)
+inf_patrimonio = [
+    "Obras em Zona Geral de Proteção (50m) sem parecer DGPC/Cultura",
+    "Danos ou alteração em imóvel classificado / vias de classificação",
+    "Remoção de terras em Sítio Arqueológico inventariado"
+]
+
+# E. Recursos Hídricos e Resíduos (Lei 58/2005 e DL 102-D/2020)
+inf_agua_residuos = [
+    "Ocupação de Domínio Hídrico (Leito ou Margem) sem título",
+    "Abandono / Deposição incontrolada de RCD (Resíduos Construção)",
+    "Captação de águas (furo/poço) sem título de utilização",
+    "Rejeição de efluentes sem tratamento"
 ]
 
 # --- INTERFACE ---
-st.title("🛡️ Fiscalização: Incidências do Artigo 9.º - DL 140/99")
+st.title("🛡️ Sistema de Fiscalização: Relatório e Auto Integrado")
 
-tab1, tab2, tab3 = st.tabs(["📍 Ocorrência", "⚖️ Condicionantes Art. 9.º", "📑 Gerar Auto"])
+tab1, tab2, tab3 = st.tabs(["📍 Ocorrência", "⚖️ Tipificação Jurídica", "📑 Geração de Documentos"])
 
 with tab1:
-    col_a, col_b = st.columns(2)
-    with col_a:
-        local = st.text_input("Localização (ZEC/ZPE)", "Médio Tejo / Região Centro")
-        area_afetada = st.number_input("Área da Ocorrência (m²)", value=15591.67)
-    with col_b:
-        infrator = st.text_input("Identificação do Infrator", "Nome/NIF")
-        notas = st.text_area("Notas de Campo", "Deteção de intervenção sem sinalética de licenciamento...")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("📍 Localização")
+        local = st.text_input("Local/Concelho", "Médio Tejo / Região Centro")
+        area = st.number_input("Área Afetada (m²)", value=15591.67)
+        desc = st.text_area("Descrição visual da ação", "Deteção de aterro e remoção de vegetação...")
+    with c2:
+        st.subheader("👤 Identificação")
+        infrator = st.text_input("Infrator (Nome/NIF)", "Em averiguação")
+        tipo_infrator = st.radio("Tipo de Entidade", ["Pessoa Singular", "Pessoa Coletiva"])
 
 with tab2:
-    st.subheader("⚠️ Ações Condicionadas (Sujeitas a Parecer do ICNF)")
-    st.info("Selecione as ações realizadas sem o prévio título de autorização ou parecer favorável:")
+    st.info("Assinale as infrações detetadas nos vários regimes:")
+    col_a, col_b = st.columns(2)
     
-    # Dividir em duas colunas para melhor leitura
-    m1, m2 = st.columns(2)
-    meio = len(condicionantes_140_99) // 2 + 1
-    
-    with m1:
-        sel_a_f = [i for i in condicionantes_140_99[:6] if st.checkbox(i)]
-    with m2:
-        sel_g_l = [i for i in condicionantes_140_99[6:] if st.checkbox(i)]
-    
-    selecao_final = sel_a_f + sel_g_l
+    with col_a:
+        st.success("**🌿 Rede Natura 2000 (Art. 9.º - DL 140/99)**")
+        sel_natura = [i for i in inf_natura_art9 if st.checkbox(i)]
+        
+        st.warning("**🏛️ Património Cultural (Lei 107/2001)**")
+        sel_patrimonio = [i for i in inf_patrimonio if st.checkbox(i)]
+
+    with col_b:
+        st.info("**🌾 Solo e Ordenamento (RAN / REN)**")
+        sel_ren = [i for i in inf_ren if st.checkbox(i)]
+        sel_ran = [i for i in inf_ran if st.checkbox(i)]
+        
+        st.error("**🗑️ Águas e Resíduos**")
+        sel_agua = [i for i in inf_agua_residuos if st.checkbox(i)]
 
     st.divider()
-    gravidade = st.select_slider("Gravidade Proposta (Lei 50/2006)", options=["Leve", "Grave", "Muito Grave"])
+    gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
+
+with tab3:
+    arquivo_pdf = st.file_uploader("Upload de Regulamento/POAP", type=['pdf'])
+    pdf_text = ""
+    if arquivo_pdf:
+        reader = PdfReader(arquivo_pdf)
+        pdf_text = "\n".join([p.extract_text() for p in reader.pages[:10]])
+        st.success("Análise documental pronta.")
 
 # --- MOTOR DOCX ---
 def export_docx(res_text):
@@ -96,32 +150,36 @@ def export_docx(res_text):
     return buf
 
 # --- GERAÇÃO ---
-if st.button("🚀 Gerar Auto de Notícia (Rede Natura 2000)"):
+st.divider()
+if st.button("🚀 Gerar Documentação de Fiscalização Integral"):
     if not api_key:
         st.error("Insira a API Key.")
     else:
-        with st.spinner("A fundamentar a violação do Artigo 9.º do DL 140/99..."):
+        with st.spinner("A cruzar todos os regimes jurídicos selecionados..."):
             model = genai.GenerativeModel(modelo_selecionado)
             prompt = f"""
-            Age como Fiscal Sénior e Jurista Especialista em Conservação da Natureza.
-            Redigi um Relatório de Fiscalização e uma Proposta de Auto de Notícia.
+            Age como Fiscal Sénior e Jurista. Redigi Relatório e Proposta de Auto de Notícia em Português Formal (PT-PT).
             
-            DADOS:
-            Local: {local}. Área: {area_afetada} m2. Infrator: {infrator}.
-            Ações Detetadas (DL 140/99, Art. 9.º): {selecao_final}
+            DADOS: Local {local}, Área {area}m2, Infrator {infrator} ({tipo_infrator}).
             
-            FUNDAMENTAÇÃO JURÍDICA:
-            1. No RELATÓRIO: Explica que as ações selecionadas carecem obrigatoriamente de parecer favorável ou autorização do ICNF, I. P., conforme o Artigo 9.º do Decreto-Lei n.º 140/99 na sua redação atual.
-            2. Analisa o impacto da ação '{selecao_final}' na integridade da Zona Especial de Conservação ou Zona de Proteção Especial.
-            3. No AUTO: Tipifica a contraordenação ambiental. Indica coimas para gravidade {gravidade} (Lei 50/2006).
+            INFRAÇÕES SELECIONADAS:
+            - Natura 2000 (Art. 9.º DL 140/99): {sel_natura}
+            - REN: {sel_ren}
+            - RAN: {sel_ran}
+            - Património: {sel_patrimonio}
+            - Águas/Resíduos: {sel_agua}
             
-            ESTILO: Português Formal, Justificado, Capítulos a BOLD, sem asteriscos.
+            INSTRUÇÕES JURÍDICAS:
+            1. No RELATÓRIO: Fundamenta a violação de cada regime selecionado. Para a Rede Natura, cita obrigatoriamente o Artigo 9.º do DL 140/99 e analisa a falta de parecer/AIncA do ICNF.
+            2. No AUTO: Tipifica as contraordenações. Calcula coimas mín/máx para gravidade {gravidade} e entidade {tipo_infrator} de acordo com a Lei 50/2006 (Ambiental) e regimes específicos.
+            3. Estilo: Texto justificado, capítulos a BOLD, sem asteriscos.
             """
             try:
                 res = model.generate_content(prompt).text
                 docx = export_docx(res)
-                st.success("Documentação pronta!")
-                st.download_button("📥 Descarregar Word", docx, file_name=f"Auto_Natura2000_{local}.docx")
+                st.success("Documentação preparada!")
+                st.download_button("📥 Descarregar Word (.docx)", docx, file_name=f"Fiscalizacao_{local}.docx")
                 st.write(res)
             except Exception as e:
                 st.error(f"Erro: {e}")
+
