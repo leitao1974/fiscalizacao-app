@@ -9,7 +9,7 @@ import re
 from pypdf import PdfReader
 
 # 1. Configuração de Interface
-st.set_page_config(page_title="Fiscalização Pro: Conservação e Território", layout="wide", page_icon="🛡️")
+st.set_page_config(page_title="Fiscalização Pro: Território e Conservação", layout="wide", page_icon="🛡️")
 
 # CSS para layout profissional
 st.markdown("""
@@ -25,20 +25,34 @@ st.markdown("""
 st.sidebar.header("⚙️ Painel de Controlo")
 api_key = st.sidebar.text_input("Google API Key", type="password")
 
-modelo_selecionado = "gemini-1.5-pro" # Valor padrão
+modelo_selecionado = "gemini-1.5-pro"
 
 if api_key:
     genai.configure(api_key=api_key)
     try:
-        # Recupera dinamicamente os modelos disponíveis para a chave inserida
         modelos_disponiveis = [m.name.replace('models/', '') for m in genai.list_models() 
                                if 'generateContent' in m.supported_generation_methods]
         modelo_selecionado = st.sidebar.selectbox("Motor de IA Ativo", modelos_disponiveis, index=0)
         st.sidebar.success(f"Ligado ao motor: {modelo_selecionado}")
     except Exception as e:
-        st.sidebar.error("Erro ao listar modelos. Verifica a tua API Key.")
+        st.sidebar.error("Erro ao listar modelos.")
 
-# --- LISTAS DE APOIO (REGIÃO CENTRO & CONSERVAÇÃO) ---
+# --- DICIONÁRIOS DE TIPOLOGIAS COMPLETOS ---
+tipologias_ren_completa = [
+    "Áreas de Proteção de Encostas",
+    "Áreas de Infiltração Máxima",
+    "Zonas Adjacentes",
+    "Cursos de Água e respetivas faixas de proteção",
+    "Cabeceiras de linhas de água",
+    "Albufeiras e respetivas faixas de proteção",
+    "Zonas Ameaçadas pelas Cheias",
+    "Zonas Ameaçadas pelo Mar",
+    "Arribas e respetivas faixas de proteção",
+    "Dunas Litorais",
+    "Praias",
+    "Estuários, Lagunas e Áreas Húmidas adjacentes"
+]
+
 zec_zpe_centro = [
     "ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Sicó/Alvaiázere", 
     "ZEC Paul de Arzila", "ZEC Serra da Lousã", "ZEC Malcata", "ZEC Rio Paiva",
@@ -77,7 +91,7 @@ with tab2:
         st.subheader("Regimes Agrícolas e Ecológicos")
         r_ran = st.checkbox("RAN (Decreto-Lei n.º 73/2009)")
         r_ren = st.checkbox("REN (Decreto-Lei n.º 166/2008)")
-        t_ren = st.multiselect("Tipologias REN:", ["Encostas", "Infiltração Máxima", "Cursos de Água"]) if r_ren else []
+        t_ren = st.multiselect("Tipologias REN (Detalhadas):", tipologias_ren_completa) if r_ren else []
     
     with c2:
         st.subheader("Conservação da Natureza")
@@ -98,7 +112,7 @@ with tab3:
     if arquivo_poap:
         reader = PdfReader(arquivo_poap)
         conteudo_poap = "\n".join([page.extract_text() for page in reader.pages[:15]])
-        st.success(f"Plano lido com sucesso ({len(reader.pages)} páginas).")
+        st.success(f"Plano lido com sucesso.")
 
 # --- MOTOR DOCX PROFISSIONAL ---
 def gerar_docx_final(texto_ia):
@@ -111,7 +125,6 @@ def gerar_docx_final(texto_ia):
         section.top_margin, section.bottom_margin = Cm(2.5), Cm(2.5)
         section.left_margin, section.right_margin = Cm(3.0), Cm(2.5)
 
-    # Limpeza de formatação Markdown da IA
     texto_formatado = texto_ia.replace('*', '').replace('#', '')
     
     for linha in texto_formatado.split('\n'):
@@ -121,7 +134,6 @@ def gerar_docx_final(texto_ia):
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         
-        # Detecção de Capítulos e Subcapítulos para BOLD
         if re.match(r'^(\d+\.|RELATÓRIO|PROPOSTA|AUTO|FUNDAMENTAÇÃO|CONCLUSÃO)', linha.upper()):
             run = p.add_run(linha)
             run.bold = True
@@ -141,39 +153,39 @@ def gerar_docx_final(texto_ia):
 st.divider()
 if st.button("🚀 Gerar Relatório de Fiscalização e Proposta de Auto"):
     if not api_key:
-        st.error("Introduza a Google API Key na barra lateral.")
+        st.error("Introduza a Google API Key.")
     else:
-        with st.spinner(f"A utilizar o motor {modelo_selecionado} para análise jurídica..."):
+        with st.spinner(f"A utilizar o motor {modelo_selecionado}..."):
             model = genai.GenerativeModel(modelo_selecionado)
             
             prompt = f"""
             Age como Fiscal do Território e Jurista Especialista em Conservação da Natureza.
-            Redigi dois documentos separados: 1. RELATÓRIO DE FISCALIZAÇÃO e 2. PROPOSTA DE AUTO DE NOTÍCIA.
+            Redigi dois documentos: 1. RELATÓRIO DE FISCALIZAÇÃO e 2. PROPOSTA DE AUTO DE NOTÍCIA.
             
             Usa Português Formal, acentos e texto justificado. NÃO uses asteriscos.
             
-            CONTEXTO LEGAL:
+            DADOS TÉCNICOS:
             - Local: {local}. Área: {area} m2. Ocupação: {ocupacao}.
             - Regimes: RAN={r_ran}, REN={t_ren}, ZEC/ZPE={t_rn2000}, Áreas Protegidas={t_ap_nac + t_ap_loc}.
-            - Diploma Base: Regime Jurídico da Conservação da Natureza (DL 142/2008).
+            - Gravidade proposta: {gravidade}.
+            - Conteúdo do Regulamento/POAP: {conteudo_poap[:2500]}
             
-            CONTEÚDO DO PLANO DE ORDENAMENTO (POAP):
-            {conteudo_poap[:2500]}
-            
-            INSTRUÇÕES ESPECÍFICAS:
-            - Analisa se a infração ocorre em solo da Rede Nacional de Áreas Protegidas e as implicações do DL 142/2008.
-            - No AUTO, tipifica a gravidade ({gravidade}) e indica as coimas (singulares e coletivas) baseadas na Lei n.º 50/2006 (Lei da Contraordenação Ambiental).
-            - Propõe embargo imediato e reposição do terreno.
+            REGRAS JURÍDICAS:
+            - Cita o DL 73/2009 para RAN.
+            - Cita o DL 166/2008 para REN, especificando as tipologias indicadas.
+            - Cita o DL 142/2008 para Áreas Protegidas e o DL 140/99 para Rede Natura 2000.
+            - No AUTO, define as coimas mín/máx baseadas na gravidade {gravidade} e na Lei 50/2006.
             """
             
             try:
                 res = model.generate_content(prompt).text
                 docx_file = gerar_docx_final(res)
-                st.success("Análise concluída com sucesso!")
-                st.download_button("📥 Descarregar Documentos Word", docx_file, 
+                st.success("Análise concluída!")
+                st.download_button("📥 Descarregar Word (.docx)", docx_file, 
                                    file_name=f"Fiscalizacao_{local}.docx",
                                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-                with st.expander("Pré-visualização do Parecer"):
+                with st.expander("Pré-visualização"):
                     st.write(res.replace('*', ''))
             except Exception as e:
-                st.error(f"Erro na geração com o modelo {modelo_selecionado}: {e}")
+                st.error(f"Erro: {e}")
+
