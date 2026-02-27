@@ -8,18 +8,18 @@ import re
 from pypdf import PdfReader
 
 # 1. Configuração de Interface
-st.set_page_config(page_title="Sistema Integrado de Fiscalização Território/Ambiente", layout="wide", page_icon="🛡️")
+st.set_page_config(page_title="Fiscalização Pro: Matriz Flexível", layout="wide", page_icon="🛡️")
 
-# Estilo para interface profissional e compacta
+# Estilo para interface profissional
 st.markdown("""
     <style>
     .stCheckbox { margin-bottom: -15px; }
     .stTabs [data-baseweb="tab"] { font-weight: bold; }
-    .stTabs [aria-selected="true"] { border-bottom: 2px solid #2e7d32; }
+    .stTextArea textarea { background-color: #ffffff; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR: CHAVE DINÂMICA ---
+# --- SIDEBAR: CONFIGURAÇÃO ---
 st.sidebar.header("⚙️ Configuração")
 api_key = st.sidebar.text_input("Google API Key", type="password")
 modelo_selecionado = "gemini-1.5-pro"
@@ -32,9 +32,7 @@ if api_key:
     except:
         st.sidebar.error("Verifica a API Key.")
 
-# --- MATRIZES DE INFRAÇÕES (INTEGRAÇÃO TOTAL) ---
-
-# A. Rede Natura 2000 (DL 140/99 - Artigo 9.º Completo)
+# --- MATRIZES DE INFRAÇÕES ---
 inf_natura_art9 = [
     "a) Obras de construção civil (fora perímetros urbanos / limites ampliação)",
     "b) Alteração do uso atual do solo > 5 ha",
@@ -49,37 +47,6 @@ inf_natura_art9 = [
     "l) Reintrodução de espécies indígenas fauna/flora"
 ]
 
-# B. REN (DL 166/2008)
-inf_ren = [
-    "Interdição: Obras de urbanização / Edificação",
-    "Interdição: Impermeabilização de solos",
-    "Interdição: Destruição do coberto vegetal",
-    "Interdição: Alteração da rede de drenagem natural",
-    "Condicionada: Reconstrução/Ampliação sem parecer CCDR"
-]
-
-# C. RAN (DL 73/2009)
-inf_ran = [
-    "Interdição: Utilização de solo para fins não agrícolas",
-    "Interdição: Ações que destruam o potencial agrícola",
-    "Condicionada: Obras de utilidade pública sem despacho reconhecimento"
-]
-
-# D. Património Cultural (Lei 107/2001)
-inf_patrimonio = [
-    "Obras em Zona Geral de Proteção (50m) sem parecer DGPC/Cultura",
-    "Danos ou alteração em imóvel classificado / vias de classificação",
-    "Remoção de terras em Sítio Arqueológico inventariado"
-]
-
-# E. Recursos Hídricos e Resíduos (Lei 58/2005 e DL 102-D/2020)
-inf_agua_residuos = [
-    "Ocupação de Domínio Hídrico (Leito ou Margem) sem título",
-    "Abandono / Deposição incontrolada de RCD (Resíduos Construção)",
-    "Captação de águas (furo/poço) sem título de utilização",
-    "Rejeição de efluentes sem tratamento"
-]
-
 # --- INTERFACE ---
 st.title("🛡️ Sistema de Fiscalização: Relatório e Auto Integrado")
 
@@ -89,32 +56,39 @@ with tab1:
     c1, c2 = st.columns(2)
     with c1:
         st.subheader("📍 Localização")
-        local = st.text_input("Local/Concelho", "Médio Tejo / Região Centro")
-        area = st.number_input("Área Afetada (m²)", value=15591.67)
-        desc = st.text_area("Descrição visual da ação", "Deteção de aterro e remoção de vegetação...")
+        local = st.text_input("Local/Concelho", "Região Centro")
+        area = st.number_input("Área Afetada (m²)", value=1000.0)
+        desc = st.text_area("Descrição visual sumária", "Deteção de infrações no local...")
     with c2:
         st.subheader("👤 Identificação")
         infrator = st.text_input("Infrator (Nome/NIF)", "Em averiguação")
         tipo_infrator = st.radio("Tipo de Entidade", ["Pessoa Singular", "Pessoa Coletiva"])
 
 with tab2:
-    st.info("Assinale as infrações detetadas nos vários regimes:")
+    st.info("Assinale as infrações detetadas e adicione outras se necessário.")
     col_a, col_b = st.columns(2)
     
     with col_a:
         st.success("**🌿 Rede Natura 2000 (Art. 9.º - DL 140/99)**")
         sel_natura = [i for i in inf_natura_art9 if st.checkbox(i)]
+        outros_natura = st.text_area("Outras infrações Natura 2000 não listadas:", placeholder="Ex: Incumprimento de medidas de minimização...")
         
         st.warning("**🏛️ Património Cultural (Lei 107/2001)**")
-        sel_patrimonio = [i for i in inf_patrimonio if st.checkbox(i)]
+        r_pat = st.checkbox("Violação de Património Cultural")
+        t_pat = st.text_area("Descreva a infração ao Património:", placeholder="Ex: Alteração de fachada em imóvel de interesse público...") if r_pat else ""
 
     with col_b:
         st.info("**🌾 Solo e Ordenamento (RAN / REN)**")
-        sel_ren = [i for i in inf_ren if st.checkbox(i)]
-        sel_ran = [i for i in inf_ran if st.checkbox(i)]
+        r_ran_ren = st.checkbox("Infrações RAN / REN")
+        t_ran_ren = st.text_area("Descreva as infrações RAN/REN:", placeholder="Ex: Impermeabilização de solo de classe A...") if r_ran_ren else ""
         
         st.error("**🗑️ Águas e Resíduos**")
-        sel_agua = [i for i in inf_agua_residuos if st.checkbox(i)]
+        r_agua_res = st.checkbox("Infrações Águas / Resíduos")
+        t_agua_res = st.text_area("Descreva as infrações de Águas/Resíduos:", placeholder="Ex: Descarga de efluentes não tratados...") if r_agua_res else ""
+
+    st.subheader("📝 Outras Infrações Não Tipificadas")
+    outros_geral = st.text_area("Indique quaisquer outras normas ou regulamentos violados:", 
+                                placeholder="Ex: Violação do Art. X do Regulamento do PDM; Falta de alvará de construção...")
 
     st.divider()
     gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
@@ -134,7 +108,8 @@ def export_docx(res_text):
         s.top_margin, s.bottom_margin = Cm(2.5), Cm(2.5)
         s.left_margin, s.right_margin = Cm(3.0), Cm(2.5)
     
-    for linha in res_text.replace('*', '').replace('#', '').split('\n'):
+    res_text = res_text.replace('*', '').replace('#', '')
+    for linha in res_text.split('\n'):
         linha = linha.strip()
         if not linha: continue
         p = doc.add_paragraph()
@@ -155,24 +130,29 @@ if st.button("🚀 Gerar Documentação de Fiscalização Integral"):
     if not api_key:
         st.error("Insira a API Key.")
     else:
-        with st.spinner("A cruzar todos os regimes jurídicos selecionados..."):
+        with st.spinner("A fundir as infrações tipificadas e os dados livres..."):
             model = genai.GenerativeModel(modelo_selecionado)
             prompt = f"""
-            Age como Fiscal Sénior e Jurista. Redigi Relatório e Proposta de Auto de Notícia em Português Formal (PT-PT).
+            Age como Fiscal Sénior e Jurista Especialista em Ambiente e Território. 
+            Redigi um Relatório de Fiscalização e uma Proposta de Auto de Notícia em Português Formal (PT-PT).
             
-            DADOS: Local {local}, Área {area}m2, Infrator {infrator} ({tipo_infrator}).
+            DADOS DA OCORRÊNCIA:
+            - Local: {local}. Área: {area} m2.
+            - Infrator: {infrator} ({tipo_infrator}).
+            - Descrição Visual: {desc}
             
-            INFRAÇÕES SELECIONADAS:
-            - Natura 2000 (Art. 9.º DL 140/99): {sel_natura}
-            - REN: {sel_ren}
-            - RAN: {sel_ran}
-            - Património: {sel_patrimonio}
-            - Águas/Resíduos: {sel_agua}
+            INFRAÇÕES SELECIONADAS E DESCRITAS:
+            - Natura 2000 (Art. 9.º DL 140/99): {sel_natura}. Extras: {outros_natura}
+            - Património Cultural: {t_pat}
+            - RAN / REN: {t_ran_ren}
+            - Águas e Resíduos: {t_agua_res}
+            - Outros não tipificados: {outros_geral}
             
             INSTRUÇÕES JURÍDICAS:
-            1. No RELATÓRIO: Fundamenta a violação de cada regime selecionado. Para a Rede Natura, cita obrigatoriamente o Artigo 9.º do DL 140/99 e analisa a falta de parecer/AIncA do ICNF.
-            2. No AUTO: Tipifica as contraordenações. Calcula coimas mín/máx para gravidade {gravidade} e entidade {tipo_infrator} de acordo com a Lei 50/2006 (Ambiental) e regimes específicos.
-            3. Estilo: Texto justificado, capítulos a BOLD, sem asteriscos.
+            1. No RELATÓRIO: Fundamenta juridicamente as infrações de acordo com os diplomas aplicáveis (DL 140/99, DL 166/2008, DL 73/2009, Lei 107/2001, Lei 58/2005, DL 102-D/2020).
+            2. Se houver dados em 'Outros não tipificados', incorpora-os na análise jurídica (ex: PDM ou RGEU).
+            3. No AUTO: Tipifica as contraordenações e calcula coimas para gravidade {gravidade} e entidade {tipo_infrator} (Lei 50/2006).
+            4. Estilo: Profissional, justificado, sem asteriscos.
             """
             try:
                 res = model.generate_content(prompt).text
@@ -182,4 +162,5 @@ if st.button("🚀 Gerar Documentação de Fiscalização Integral"):
                 st.write(res)
             except Exception as e:
                 st.error(f"Erro: {e}")
+
 
