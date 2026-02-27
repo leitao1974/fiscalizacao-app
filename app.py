@@ -9,9 +9,9 @@ import re
 from pypdf import PdfReader
 
 # 1. Configuração de Interface
-st.set_page_config(page_title="Fiscalização Integrada: Património e Território", layout="wide", page_icon="🛡️")
+st.set_page_config(page_title="Fiscalização Pro: Gestão de Ocorrências", layout="wide", page_icon="🛡️")
 
-# Estilo CSS para interface profissional
+# Estilo CSS para interface limpa e profissional
 st.markdown("""
     <style>
     .main { background-color: #f4f7f6; }
@@ -35,58 +35,32 @@ if api_key:
     except:
         st.sidebar.error("Erro na API Key.")
 
-# --- LISTAS DE APOIO (PATRIMÓNIO, RN2000, REN, AP) ---
-tipologias_patrimonio = [
-    "Monumento Nacional (ZGP/ZEP - 50m)",
-    "Imóvel de Interesse Público (ZGP/ZEP)",
-    "Imóvel de Interesse Municipal",
-    "Sítio Arqueológico (Proteção de Subsolo)",
-    "Conjunto ou Sítio Classificado",
-    "Zona Especial de Proteção (ZEP) específica"
-]
+# --- LISTAS DE APOIO ---
+tipologias_patrimonio = ["Monumento Nacional (ZGP/ZEP)", "Imóvel de Interesse Público", "Sítio Arqueológico", "Conjunto Classificado", "Zona Geral de Proteção (50m)"]
+tipologias_ren = ["Áreas de Proteção de Encostas", "Áreas de Infiltração Máxima", "Zonas Adjacentes", "Cursos de Água", "Cabeceiras de linhas de água", "Zonas Ameaçadas pelas Cheias", "Arribas"]
+zec_zpe_centro = ["ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Sicó/Alvaiázere", "ZEC Paul de Arzila", "ZEC Serra da Lousã", "ZEC Rio Zêzere", "ZEC Albufeira de Castelo do Bode", "ZPE Paul do Boquilobo", "ZPE Estuário do Mondego"]
+areas_protegidas_centro = ["P.N. Douro Internacional", "P.N. Serra da Estrela", "P.N. Serras de Aire e Candeeiros", "R.N. Paul do Boquilobo", "R.N. Paul de Arzila", "R.N. Serra da Malcata"]
+zonamentos_poap = ["Reserva Integral", "Reserva Parcial", "Proteção Parcial Tipo I", "Proteção Parcial Tipo II", "Proteção Complementar", "Intervenção Específica"]
 
-tipologias_ren = [
-    "Áreas de Proteção de Encostas", "Áreas de Infiltração Máxima", "Zonas Adjacentes",
-    "Cursos de Água", "Cabeceiras de linhas de água", "Zonas Ameaçadas pelas Cheias",
-    "Arribas e respetivas faixas de proteção", "Estuários e Áreas Húmidas"
-]
-
-zec_zpe_centro_completa = [
-    "ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Sicó/Alvaiázere", 
-    "ZEC Paul de Arzila", "ZEC Serra da Lousã", "ZEC Malcata", "ZEC Rio Zêzere",
-    "ZEC Albufeira de Castelo do Bode", "ZEC Rio Paiva", "ZEC Douro Internacional",
-    "ZPE Paul do Boquilobo", "ZPE Estuário do Mondego", "ZPE Douro Internacional"
-]
-
-areas_protegidas_centro = [
-    "Parque Natural do Douro Internacional (PNDI)",
-    "Parque Natural da Serra da Estrela (PNSE)",
-    "Parque Natural das Serras de Aire e Candeeiros (PNSAC)",
-    "Parque Natural do Tejo Internacional",
-    "Reserva Natural do Paul do Boquilobo",
-    "Reserva Natural do Paul de Arzila",
-    "Reserva Natural da Serra da Malcata"
-]
-
-zonamentos_poap = [
-    "Reserva Integral", "Reserva Parcial", 
-    "Zona de Proteção Parcial de Tipo I", "Zona de Proteção Parcial de Tipo II",
-    "Zona de Proteção Complementar", "Área de Intervenção Específica"
-]
-
-# --- INTERFACE ---
+# --- INTERFACE PRINCIPAL ---
 st.title("🛡️ Sistema de Apoio à Fiscalização e Auto de Notícia")
-st.markdown("Análise Jurídica: **RAN, REN, ZEC/ZPE, Património Cultural e Conservação da Natureza**.")
 
-tab1, tab2, tab3 = st.tabs(["📍 Ocorrência", "⚖️ Enquadramento Legal", "📑 Documentação Base"])
+tab1, tab2, tab3 = st.tabs(["📍 Ocorrência e Infrator", "⚖️ Enquadramento Legal", "📑 Documentação Base"])
 
 with tab1:
     col1, col2 = st.columns(2)
     with col1:
-        local = st.text_input("Localização / Concelho", "Alenquer / Tomar / Figueira de Castelo Rodrigo")
+        st.subheader("Dados do Local")
+        local = st.text_input("Localização / Concelho", "Alenquer / Tomar / Manteigas")
         area = st.number_input("Área Afetada (m²)", value=15591.67, format="%.2f")
+        ocupacao = st.text_area("Descrição da Ação Detetada", "Execução de aterro com alteração da morfologia do solo e potencial impacto ambiental.")
+    
     with col2:
-        ocupacao = st.text_area("Descrição da Ação Detetada", "Execução de aterro com alteração da morfologia do solo e potencial impacto em património/natureza.")
+        st.subheader("Dados do Infrator")
+        infrator_nome = st.text_input("Nome / Designação Social", "Em averiguação")
+        infrator_morada = st.text_input("Morada / Sede", "Desconhecida")
+        nif_nipc = st.text_input("NIF / NIPC", "000000000")
+        testemunhas = st.text_area("Testemunhas / Auxiliares (se aplicável)", "N/A")
 
 with tab2:
     c1, c2, c3 = st.columns(3)
@@ -101,23 +75,21 @@ with tab2:
         r_ap = st.checkbox("Área Protegida (RNAP)")
         t_ap = st.multiselect("Parques/Reservas:", areas_protegidas_centro) if r_ap else []
         t_zonas = st.multiselect("Zonamento POAP:", zonamentos_poap) if r_ap else []
-        
         r_rn2000 = st.checkbox("Rede Natura 2000")
-        t_rn2000 = st.multiselect("ZEC/ZPE:", zec_zpe_centro_completa) if r_rn2000 else []
+        t_rn2000 = st.multiselect("ZEC/ZPE:", zec_zpe_centro) if r_rn2000 else []
 
     with c3:
-        st.subheader("🏛️ Património e Água")
+        st.subheader("🏛️ Património / Outros")
         r_patrimonio = st.checkbox("Património Cultural")
         t_patrimonio = st.multiselect("Tipologia:", tipologias_patrimonio) if r_patrimonio else []
-        
-        r_agua = st.checkbox("Domínio Hídrico (Lei Água)")
+        r_agua = st.checkbox("Domínio Hídrico")
         st.divider()
         gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
 
 conteudo_poap = ""
 with tab3:
     st.write("Carregue o regulamento (PDF) para fundamentação automática.")
-    arquivo = st.file_uploader("Upload PDF (Regulamento/Plano)", type=['pdf'])
+    arquivo = st.file_uploader("Upload Regulamento/Plano", type=['pdf'])
     if arquivo:
         reader = PdfReader(arquivo)
         conteudo_poap = "\n".join([page.extract_text() for page in reader.pages[:15]])
@@ -141,7 +113,7 @@ def gerar_docx_final(texto_ia):
         p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
         
-        if re.match(r'^(\d+\.|RELATÓRIO|PROPOSTA|AUTO|FUNDAMENTAÇÃO|CONCLUSÃO)', linha.upper()):
+        if re.match(r'^(\d+\.|RELATÓRIO|PROPOSTA|AUTO|FUNDAMENTAÇÃO|CONCLUSÃO|DADOS DO INFRATOR)', linha.upper()):
             run = p.add_run(linha)
             run.bold = True
             run.font.size = Pt(12)
@@ -158,33 +130,34 @@ def gerar_docx_final(texto_ia):
 
 # --- GERAÇÃO ---
 st.divider()
-if st.button("🚀 Gerar Relatório e Auto de Notícia Profissional"):
+if st.button("🚀 Gerar Documentação Completa (Word)"):
     if not api_key:
         st.error("Introduza a Google API Key.")
     else:
-        with st.spinner(f"A utilizar o motor {modelo_selecionado} para análise jurídica..."):
+        with st.spinner(f"A redigir relatório e auto com motor {modelo_selecionado}..."):
             model = genai.GenerativeModel(modelo_selecionado)
             prompt = f"""
             Age como Fiscal do Território e Jurista Sénior. Elabora um Relatório de Fiscalização e Proposta de Auto de Notícia.
             PORTUGUÊS FORMAL COM ACENTOS. TEXTO JUSTIFICADO. SEM ASTERISCOS.
             
-            DADOS:
+            DADOS DA OCORRÊNCIA:
             - Local: {local}. Área: {area} m2. Ação: {ocupacao}.
-            - Enquadramento: RAN={r_ran}, REN={t_ren}, RN2000={t_rn2000}, Áreas Protegidas={t_ap} (Zonamento: {t_zonas}).
-            - Património Cultural ({r_patrimonio}): {t_patrimonio}.
-            - Conteúdo do Regulamento: {conteudo_poap[:2000]}
+            - INFRATOR: {infrator_nome}, Morada: {infrator_morada}, NIF: {nif_nipc}. Testemunhas: {testemunhas}.
+            - Regimes: RAN={r_ran}, REN={t_ren}, RN2000={t_rn2000}, Áreas Protegidas={t_ap} (Zonamento: {t_zonas}), Património={t_patrimonio}.
+            - Conteúdo do Regulamento/PDF: {conteudo_poap[:2000]}
             
-            FUNDAMENTAÇÃO OBRIGATÓRIA:
-            1. PATRIMÓNIO: Cita Lei n.º 107/2001 e DL 309/2009 se houver impacto em zonas de proteção.
-            2. NATUREZA: Cita DL 142/2008 (RNAP) e DL 140/99 (RN2000).
-            3. TERRITÓRIO: Cita DL 73/2009 (RAN) e DL 166/2008 (REN).
-            4. AUTO: Define coimas mín/máx para gravidade {gravidade} baseadas na Lei 50/2006.
+            ESTRUTURA:
+            1. RELATÓRIO DE FISCALIZAÇÃO: Descreve os factos, o local e a fundamentação técnica das violações.
+            2. PROPOSTA DE AUTO DE NOTÍCIA: Inclui os dados do infrator. Tipifica a contraordenação conforme a Lei 50/2006. 
+            Indica as coimas mín/máx para gravidade {gravidade} (Singulares e Coletivas).
+            Propõe embargo e reposição da legalidade.
             """
-            
             try:
                 res = model.generate_content(prompt).text
                 docx = gerar_docx_final(res)
-                st.success("Documentação preparada com sucesso!")
+                st.success("Documentação pronta para descarga!")
                 st.download_button("📥 Descarregar Word (.docx)", docx, file_name=f"Fiscalizacao_{local}.docx")
+                with st.expander("Pré-visualização do Parecer"):
+                    st.write(res.replace('*', ''))
             except Exception as e:
-                st.error(f"Erro: {e}")
+                st.error(f"Erro na IA: {e}")
