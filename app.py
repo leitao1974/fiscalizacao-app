@@ -188,7 +188,7 @@ matriz_sancionatoria = {
 # --- INTERFACE ---
 st.title("🛡️ Sistema de Fiscalização: Master Território e Ambiente")
 
-tabs = st.tabs(["📍 Identificação", "💧 REN", "🌿 Natura & AP", "🌾 RAN", "🏛️ Património", "🌊 Recursos Hídricos", "📑 Gerar Documentação"])
+tabs = st.tabs(["📍 Identificação", "💧 REN", "🌿 Natura & AP", "🌾 RAN", "🏛️ Património", "🌊 Recursos Hídricos", "📑 Informação Técnica"])
 
 with tabs[0]:
     c1, c2 = st.columns(2)
@@ -320,37 +320,40 @@ with tabs[6]:
         buf.seek(0)
         return buf
 
-    if st.button("🚀 Gerar Documentação Final"):
+    if st.button("🚀 Gerar Informação Técnica Fundamentada"):
         if not api_key:
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A cruzar legislação (REN Anexo II, RAN e Água)..."):
+            with st.spinner("A analisar conformidade legal (Anexo II REN, RAN e Água)..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 prompt = f"""
-                Age como Fiscal Sénior e Jurista. Redigi Relatório e Auto de Notícia.
-                DADOS: Local {local}, GPS: {lat}, {lon}. Área {area_m2}m2.
-                INFRATOR: {inf_nome}, NIF: {inf_nif}, Tel: {inf_tel} ({tipo_ent}).
-                
-                ENQUADRAMENTO REN (REFINADO):
-                - Áreas REN: {sel_ren}.
-                - Ações Compatíveis (Anexo II Decl. Rect. 63-B/2008): {sel_comp if 'sel_comp' in locals() else 'Nenhuma'}.
-                - Falta de Título: Comunicação={c_previa}, Parecer APA={p_apa}, Limites={lim_area_ren}.
-                - Instrução Técnica: Fundamenta a análise no Anexo II da Declaração de Rectificação n.º 63-B/2008 e no Artigo 20.º do DL 166/2008.
-                
-                OUTROS REGIMES:
-                - Natura 2000: {sel_zec} / {sel_art9}.
-                - RAN: {sel_ran_int} / {sel_ran_cond}. Limites={lim_apoio}/{lim_hab}/{lim_vias}.
-                - Património: {sel_pat_int}/{sel_pat_cond}. Notas={obs_pat}.
-                - Recursos Hídricos: {sel_rh_int}/{sel_rh_cond}. Notas={obs_rh}.
-                - Minimização: {sel_medidas}. Notas={texto_adicional_medidas}.
-                
-                SANCIONATÓRIO:
-                1. REN: Art. 43º DL 166/2008. RAN: Art. 43º DL 73/2009.
-                2. Água/Natura: Lei 50/2006.
-                3. Graduação: Gravidade {gravidade}, Infrator {tipo_ent}. Benefício Económico={beneficio_economico}.
-                4. Acessórias: Embargo e reposição (Art. 30º Lei 50/2006).
-                
-                ESTILO: Formal, PT-PT, capítulos a BOLD.
+                Age como Perito Técnico Sénior e Jurista especializado em Ordenamento do Território. 
+                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
+
+                DADOS DO LOCAL E INTERESSADO:
+                - Localidade: {local}, Coordenadas: {lat}/{lon}. Área afetada: {area_m2}m2.
+                - Interessado: {inf_nome}, NIF: {inf_nif}.
+
+                ELEMENTOS DE ANÁLISE SELECIONADOS:
+                - REN: {sel_ren}. Ações Anexo II: {sel_comp if 'sel_comp' in locals() else 'Não selecionado'}. Títulos em falta: {c_previa}/{p_apa}.
+                - NATURA 2000 & AP: {sel_zec} / {sel_rnap}. Condicionantes Art. 9º nº 2: {sel_art9}.
+                - RAN: {sel_ran_int} / {sel_ran_cond}. Limites Técnicos: {lim_apoio}/{lim_hab}/{lim_vias}.
+                - PATRIMÓNIO: {sel_pat_int}/{sel_pat_cond}.
+                - RECURSOS HÍDRICOS: {sel_rh_int}/{sel_rh_cond}.
+                - MEDIDAS DE REPOSIÇÃO: {sel_medidas}. Notas: {texto_adicional_medidas}.
+
+                ESTRUTURA OBRIGATÓRIA DO DOCUMENTO:
+                1. OBJETIVO: Análise da conformidade legal das intervenções face aos regimes de utilidade pública.
+                2. DESCRIÇÃO DOS FACTOS: Relatar tecnicamente as ações observadas no local.
+                3. FUNDAMENTAÇÃO JURÍDICA:
+                   - PARA A REN: Citar obrigatoriamente a Declaração de Retificação n.º 63-B/2008 e o respetivo Anexo II para fundamentar se a ação é compatível ou interdita nos termos do Artigo 20.º do DL 166/2008 (com a redação do DL 239/2012).
+                   - PARA REDE NATURA 2000: Transcrever na íntegra as alíneas selecionadas do Artigo 9.º n.º 2 do DL 140/99.
+                   - PARA A RAN: Fundamentar com o Artigo 22.º do DL 73/2009.
+                   - PARA RECURSOS HÍDRICOS: Citar a Lei 58/2005 e o DL 226-A/2007 quanto à necessidade de TURH.
+                4. CONCLUSÃO E PARECER TÉCNICO: Emitir um juízo técnico sobre a legalidade. Indicar se a situação é passível de legalização ou se deve ser determinada a reposição da situação anterior.
+                5. PRESCRIÇÕES TÉCNICAS: Listar detalhadamente as medidas {sel_medidas} para a mitigação dos danos.
+
+                ESTILO: Altamente formal, Português de Portugal (PT-PT), capítulos a BOLD. NÃO incluir proposta de coimas ou sanções.
                 """
                 try:
                     res = model.generate_content(prompt).text
@@ -359,4 +362,3 @@ with tabs[6]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
-
