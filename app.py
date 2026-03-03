@@ -151,6 +151,14 @@ medidas_minimizacao = [
     "🛡️ Instalação de barreiras acústicas ou de contenção de poeiras"
 ]
 
+# 💰 MATRIZ JURÍDICA DE SANÇÕES
+matriz_sancionatoria = {
+    "REN": "DL 166/2008, Art. 43.º (Contraordenações Graves ou Muito Graves)",
+    "RAN": "DL 73/2009, Art. 43.º (Coimas de 250€ a 3.740€ para pessoas singulares e até 44.890€ para coletivas)",
+    "NATURA 2000": "DL 140/99, Art. 30.º (Remete para a Lei 50/2006)",
+    "AGUA": "Lei 58/2005, Art. 95.º e 96.º (Remete para o regime da Lei 50/2006)"
+}
+
 # --- INTERFACE ---
 st.title("🛡️ Sistema de Fiscalização: Master Território e Ambiente")
 
@@ -254,6 +262,16 @@ with tabs[6]:
     st.subheader("🏁 Finalização e Geração")
     gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
     r_crime = st.checkbox("⚠️ Suspeita de Crime (Art. 278.º Código Penal)")
+	st.write("---")
+    st.subheader("⚖️ Regimes Sancionatórios Ativados")
+    col_reg1, col_reg2 = st.columns(2)
+    with col_reg1:
+        if sel_ren: st.warning(f"🔹 **REN:** {matriz_sancionatoria['REN']}")
+        if sel_ran_int or sel_ran_cond: st.warning(f"🔹 **RAN:** {matriz_sancionatoria['RAN']}")
+    with col_reg2:
+        if sel_zec or sel_art9: st.warning(f"🔹 **Natura 2000:** {matriz_sancionatoria['NATURA 2000']}")
+        if sel_rh_int or sel_rh_cond: st.warning(f"🔹 **Água:** {matriz_sancionatoria['AGUA']}")
+	
     
     # Motor Docx (Função consolidada)
     def export_docx(res_text):
@@ -304,11 +322,14 @@ with tabs[6]:
                 - PRESCRIÇÕES TÉCNICAS ADICIONAIS: {texto_adicional_medidas}.
                 - Instrução: No capítulo da 'PROPOSTA', detalha como estas medidas ajudam a cumprir os princípios da prevenção e da precaução ambiental.
                 
-                INSTRUÇÕES:
-                1. No RELATÓRIO: Cita o n.º 2 do Artigo 9.º do DL 140/99 na íntegra para as condicionantes selecionadas.
-                2. Menciona as interdições específicas do Zonamento {sel_zon} e do Sítio {sel_zec}.
-                3. No AUTO: Tipifica e calcula coimas para gravidade {gravidade} e entidade {tipo_ent} (Lei 50/2006).
-                4. Estilo: Formal, PT-PT, capítulos a BOLD.
+                INSTRUÇÕES SANCIONATÓRIAS:
+                1. PARA A REN: Aplica o Art. 43.º do DL 166/2008. Classifica como Grave ou Muito Grave.
+                2. PARA A RAN: Aplica o Art. 43.º do DL 73/2009. Nota: Os limites são diferentes do regime geral ambiental (Singulares: 250€-3740€; Coletivas: até 44890€).
+                3. PARA REDE NATURA 2000: Aplica a Lei 50/2006 conforme o Art. 30.º do DL 140/99.
+                4. PARA RECURSOS HÍDRICOS: Aplica o regime da Lei 50/2006 por força do Art. 96.º da Lei 58/2005.
+                5. GRADUAÇÃO: Usa a Gravidade {gravidade} e o Infrator {tipo_ent}. Se houver Benefício Económico ({beneficio_economico}), a coima deve ser elevada para o terço superior do intervalo.
+                6. SANÇÕES ACESSÓRIAS: Menciona obrigatoriamente a suspensão de atividades e a reposição da situação anterior à infração (Art. 30.º Lei 50/2006).
+                7. ESTILO: Formal, PT-PT, capítulos a BOLD, justificado.
                 """
                 try:
                     res = model.generate_content(prompt).text
@@ -317,5 +338,4 @@ with tabs[6]:
                     st.write(res)
                 except Exception as e: 
                     st.error(f"Erro: {e}")
-
 
