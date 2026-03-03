@@ -102,10 +102,48 @@ inf_ran_condicionantes = [
     "⚠️ (Cond.) Obras de utilidade pública sem despacho de reconhecimento (Art. 25.º)",
     "⚠️ (Cond.) Infraestruturas (energia/vias) sem verificação de inexistência de alternativa"
 ]
+
+# 🏛️ PATRIMÓNIO CULTURAL (Lei 107/2001)
+patrimonio_interdicoes = [
+    "🚫 Obra/Intervenção sem autorização da DGPC/DRC (Interior ou Exterior)",
+    "🚫 Mudança de uso que afete o valor do bem classificado",
+    "🚫 Destruição, danificação ou deterioração do bem",
+    "🚫 Saída de bem móvel classificado do território nacional sem autorização"
+]
+
+patrimonio_condicionantes = [
+    "⚠️ Intervenção em Zona Especial de Proteção (ZEP)",
+    "⚠️ Intervenção em Zona de Proteção Provisória (50 metros)",
+    "⚠️ Obra em imóvel em vias de classificação (Suspensão de licença)",
+    "⚠️ Trabalhos arqueológicos sem autorização prévia"
+]
+
+patrimonio_deveres = [
+    "❗ Incumprimento do dever de conservação e manutenção",
+    "❗ Desrespeito por ordem de obras de emergência/salvaguarda",
+    "❗ Violação do dever de facultar o acesso para inspeção técnica"
+]
+
+# 💧 RECURSOS HÍDRICOS (Lei n.º 58/2005 - Lei da Água)
+rh_interdicoes = [
+    "🚫 Utilização do Domínio Público Hídrico sem Título (Licença/Concessão)",
+    "🚫 Alteração do leito ou das margens de cursos de água",
+    "🚫 Extração de inertes (areia/cascalho) em locais não autorizados",
+    "🚫 Descarga de águas residuais ou resíduos sem autorização (APA/ARH)",
+    "🚫 Obstrução do livre fluxo das águas ou do acesso às margens"
+]
+
+rh_condicionantes = [
+    "⚠️ Obras em Margem (faixa de 10m em águas não navegáveis / 50m em navegáveis)",
+    "⚠️ Construções em Zonas Adjacentes (Zonas Inundáveis/Ameaçadas pelas Cheias)",
+    "⚠️ Captação de águas superficiais ou subterrâneas sem balizamento/medidor",
+    "⚠️ Limpeza de linhas de água com destruição de galeria ripícola autóctone"
+]
+
 # --- INTERFACE ---
 st.title("🛡️ Sistema de Fiscalização: Master Território e Ambiente")
 
-tabs = st.tabs(["📍 Identificação", "💧 REN", "🌿 Natura & AP", "🌾 RAN", "🏛️ Património", "📑 Gerar Documentação"])
+tabs = st.tabs(["📍 Identificação", "💧 REN", "🌿 Natura & AP", "🌾 RAN", "🏛️ Património", "🌊 Recursos Hídricos", "📑 Gerar Documentação"])
 
 with tabs[0]:
     c1, c2 = st.columns(2)
@@ -166,11 +204,35 @@ with tabs[3]:
         falta_alt = st.checkbox("Falta de prova de inexistência de alternativa viável fora da RAN")
 
 with tabs[4]:
-    st.warning("**Património Cultural (Lei 107/2001)**")
-    r_pat = st.checkbox("Intervenção em Zona Geral de Proteção (50m) sem parecer")
-    t_pat = st.text_area("Descreva a infração ao Património")
-
+    st.warning("**Património Cultural (Lei 107/2001 - Bases da Política e do Regime de Proteção)**")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("**Interdições e Condicionantes**")
+        sel_pat_int = [i for i in patrimonio_interdicoes if st.checkbox(i)]
+        sel_pat_cond = [i for i in patrimonio_condicionantes if st.checkbox(i)]
+    with col2:
+        st.write("**Deveres do Proprietário e Arqueologia**")
+        sel_pat_dev = [i for i in patrimonio_deveres if st.checkbox(i)]
+        obs_pat = st.text_area("Notas Técnicas (Estado de conservação, tipologia do bem, etc.):")
+    
+    st.divider()
+    st.info("ℹ️ **Nota Jurídica:** Licenças municipais que infrinjam estas normas são nulas (Art. 4.º e 5.º da Lei 107/2001).")
+	
 with tabs[5]:
+    st.info("**Recursos Hídricos (Lei da Água - Lei n.º 58/2005)**")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("**Interdições e Utilizações Principais**")
+        sel_rh_int = [i for i in rh_interdicoes if st.checkbox(i)]
+    with col2:
+        st.write("**Zonas de Proteção e Condicionantes**")
+        sel_rh_cond = [i for i in rh_condicionantes if st.checkbox(i)]
+        obs_rh = st.text_area("Notas sobre o Meio Hídrico (Caudal, poluição visível, erosão):")
+
+    st.divider()
+    st.warning("ℹ️ **Nota de Campo:** Verifique a titularidade (Público vs Privado) e a servidão de margem (Art. 21.º da Lei da Água).")
+
+with tabs[6]:
     st.subheader("🏁 Finalização e Geração")
     gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
     r_crime = st.checkbox("⚠️ Suspeita de Crime (Art. 278.º Código Penal)")
@@ -213,7 +275,12 @@ with tabs[5]:
                 - Natura 2000 (Art 9º nº 2 DL 140/99): {sel_art9}.
                 - RAN (DL 199/2015): Interdições={sel_ran_int}, Condicionantes={sel_ran_cond}. 
 				- Limites Técnicos Portaria 162/2011: Apoios={lim_apoio}, Habitação={lim_hab}, Vias={lim_vias}, Alternativa={falta_alt}.
-                - Património: {r_pat}. Crime Art 278 CP: {r_crime}.
+                - PATRIMÓNIO CULTURAL: Interdições={sel_pat_int}, Condicionantes={sel_pat_cond}, Incumprimento de Deveres={sel_pat_dev}.
+				- Notas Adicionais Património: {obs_pat}.
+				- Nota: Fundamenta a NULIDADE de eventuais licenças administrativas caso violem a Lei 107/2001.
+				- RECURSOS HÍDRICOS: Interdições={sel_rh_int}, Condicionantes={sel_rh_cond}.
+				- Notas Adicionais Recursos Hídricos: {obs_rh}.
+				- Importante: Fundamenta com base no regime de utilização dos recursos hídricos (DL 226-A/2007) e a necessidade de Título de Utilização (TURH).
                 
                 INSTRUÇÕES:
                 1. No RELATÓRIO: Cita o n.º 2 do Artigo 9.º do DL 140/99 na íntegra para as condicionantes selecionadas.
@@ -227,3 +294,4 @@ with tabs[5]:
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"Fiscalizacao_{local}.docx")
                     st.write(res)
                 except Exception as e: st.error(f"Erro: {e}")
+
