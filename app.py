@@ -80,8 +80,21 @@ zonamento_tipologias = [
 ]
 
 # 🌾 RAN (DL 73/2009 + DL 199/2015)
-ran_tipologias = ["Utilização não agrícola sem parecer (Art. 22.º)", "Ações que destruam o potencial agrícola do solo", "Intervenção em Aproveitamento Hidroagrícola (Regadio)", "Impermeabilização de solos de Classe A ou B"]
+# 🌾 RAN - MATRIZ TÉCNICA (DL 73/2009 + DL 199/2015 + Portaria 162/2011)
+inf_ran_interdicoes = [
+    "🚫 (Int.) Utilização de terras para fins não agrícolas (sem enquadramento)",
+    "🚫 (Int.) Ações que destruam ou degradem o potencial agrícola do solo",
+    "🚫 (Int.) Impermeabilização definitiva de solos de alta qualidade (Classe A/B)",
+    "🚫 (Int.) Deposição de estéreis, resíduos ou materiais de construção",
+    "🚫 (Int.) Intervenção em área beneficiada por Aproveitamento Hidroagrícola (Regadio Público)"
+]
 
+inf_ran_condicionantes = [
+    "⚠️ (Cond.) Apoios agrícolas sem parecer da Entidade Regional da RAN",
+    "⚠️ (Cond.) Habitação de agricultor sem título de parecer vinculado",
+    "⚠️ (Cond.) Obras de utilidade pública sem despacho de reconhecimento (Art. 25.º)",
+    "⚠️ (Cond.) Infraestruturas (energia/vias) sem verificação de inexistência de alternativa"
+]
 # --- INTERFACE ---
 st.title("🛡️ Sistema de Fiscalização: Master Território e Ambiente")
 
@@ -135,14 +148,15 @@ with tabs[3]:
     st.info("**Reserva Agrícola Nacional (DL 199/2015 + Portaria 162/2011)**")
     col1, col2 = st.columns(2)
     with col1:
-        st.write("**Infrações Core**")
-        sel_ran = [i for i in ran_tipologias if st.checkbox(i, key=f"ran_{i}")]
+        st.write("**Interdições e Condicionantes RAN**")
+        sel_ran_int = [i for i in inf_ran_interdicoes if st.checkbox(i)]
+        sel_ran_cond = [i for i in inf_ran_condicionantes if st.checkbox(i)]
     with col2:
-        st.write("**Limites Técnicos (Portaria 162/2011)**")
-        lim_apoio = st.checkbox("Apoio Agrícola > 750m² ou >1% área exploração")
-        lim_hab = st.checkbox("Habitação Agricultor > 300m²")
-        lim_vias = st.checkbox("Vias > 5m de largura ou pavimento impermeável")
-        falta_alt = st.checkbox("Falta de prova de inexistência de alternativa fora da RAN")
+        st.write("**Verificação de Limites Técnicos (Portaria 162/2011)**")
+        lim_apoio = st.checkbox("Apoio Agrícola > 750m² ou >1% da área da exploração")
+        lim_hab = st.checkbox("Habitação Agricultor > 300m² ou sem ónus de inalienabilidade")
+        lim_vias = st.checkbox("Vias de acesso > 5m de largura ou pavimento impermeável")
+        falta_alt = st.checkbox("Falta de prova de inexistência de alternativa viável fora da RAN")
 
 with tabs[4]:
     st.warning("**Património Cultural (Lei 107/2001)**")
@@ -190,7 +204,8 @@ with tabs[5]:
                 - Áreas Protegidas (RNAP): {sel_rnap}.
                 - Zonamento (POAP): {sel_zon}.
                 - Natura 2000 (Art 9º nº 2 DL 140/99): {sel_art9}.
-                - RAN (DL 199/2015): {sel_ran}. Limites Portaria 162/2011: Apoio={lim_apoio}, Hab={lim_hab}, Vias={lim_vias}, Alternativa={falta_alt}.
+                - RAN (DL 199/2015): Interdições={sel_ran_int}, Condicionantes={sel_ran_cond}. 
+				- Limites Técnicos Portaria 162/2011: Apoios={lim_apoio}, Habitação={lim_hab}, Vias={lim_vias}, Alternativa={falta_alt}.
                 - Património: {r_pat}. Crime Art 278 CP: {r_crime}.
                 
                 INSTRUÇÕES:
@@ -205,3 +220,4 @@ with tabs[5]:
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"Fiscalizacao_{local}.docx")
                     st.write(res)
                 except Exception as e: st.error(f"Erro: {e}")
+
