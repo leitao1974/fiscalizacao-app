@@ -290,15 +290,34 @@ with tabs[6]:
     st.subheader("🏁 Finalização e Geração")
     gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
     r_crime = st.checkbox("⚠️ Suspeita de Crime (Art. 278.º Código Penal)")
-	st.write("---")
+st.write("---")
+    with tabs[6]:
+    st.subheader("🛠️ Medidas de Minimização Propostas")
+    sel_medidas = [i for i in medidas_minimizacao if st.checkbox(i)]
+    texto_adicional_medidas = st.text_area("Prescrições técnicas específicas:")
+    
+    st.divider()
+    st.subheader("🏁 Finalização e Geração")
+    gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
+    r_crime = st.checkbox("⚠️ Suspeita de Crime (Art. 278.º Código Penal)")
+    beneficio_economico = st.checkbox("Benefício económico mensurável?")
+    reincidencia = st.checkbox("Reincidência por parte do infrator?")
+
+    st.write("---")
     st.subheader("⚖️ Regimes Sancionatórios Ativados")
     col_reg1, col_reg2 = st.columns(2)
     with col_reg1:
-        if sel_ren: st.warning(f"🔹 **REN:** {matriz_sancionatoria['REN']}")
-        if sel_ran_int or sel_ran_cond: st.warning(f"🔹 **RAN:** {matriz_sancionatoria['RAN']}")
+        if sel_ren: 
+            st.warning(f"🔹 **REN:** {matriz_sancionatoria['REN']}")
+        if sel_ran_int or sel_ran_cond: 
+            st.warning(f"🔹 **RAN:** {matriz_sancionatoria['RAN']}")
     with col_reg2:
-        if sel_zec or sel_art9: st.warning(f"🔹 **Natura 2000:** {matriz_sancionatoria['NATURA 2000']}")
-        if sel_rh_int or sel_rh_cond: st.warning(f"🔹 **Água:** {matriz_sancionatoria['AGUA']}")
+        if sel_zec or sel_art9: 
+            st.warning(f"🔹 **Natura 2000:** {matriz_sancionatoria['NATURA 2000']}")
+        if sel_rh_int or sel_rh_cond: 
+            st.warning(f"🔹 **Água:** {matriz_sancionatoria['AGUA']}")
+
+    # O restante código (def export_docx e if st.button) deve seguir este mesmo alinhamento
 	
     
     # Motor Docx (Função consolidada)
@@ -366,4 +385,3 @@ with tabs[6]:
                     st.write(res)
                 except Exception as e: 
                     st.error(f"Erro na geração: {e}")
-
