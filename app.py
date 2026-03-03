@@ -64,11 +64,18 @@ condicionantes_art9 = [
 
 # 🌿 ÁREAS PROTEGIDAS (RNAP)
 rnap_lista = [
-    "P.N. da Peneda-Gerês", "P.N. do Alvão", "P.N. do Douro Internacional", "P.N. da Serra da Estrela", 
-    "P.N. das Serras de Aire e Candeeiros", "P.N. de Montesinho", "P.N. do Tejo Internacional", 
-    "R.N. do Paul do Boquilobo", "R.N. das Berlengas", "R.N. da Serra da Malcata", 
-    "R.N. do Estuário do Tejo", "R.N. do Estuário do Sado", "P.P. da Serra do Açor", 
-    "P.P. da Arriba Fóssil da Costa de Caparica"
+    "Parque Natural das Serras de Aire e Candeeiros",
+    "Parque Natural da Serra da Estrela",
+    "Parque Natural do Tejo Internacional",
+    "Parque Natural do Douro Internacional",
+    "Reserva Natural do Paul do Boquilobo",
+    "Reserva Natural da Serra da Malcata",
+    "Reserva Natural das Berlengas",
+    "Reserva Natural do Paul de Arzila",
+    "Reserva Natural das Dunas de São Jacinto",
+    "Paisagem Protegida da Serra do Açor",
+    "Monumento Natural do Cabo Mondego",
+    "Monumento Natural das Pegadas de Dinossáurios de Ourém/Torres Novas"
 ]
 
 # 🌿 ZONAMENTO (POAP / PNA / RJUE)
@@ -220,4 +227,3 @@ with tabs[5]:
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"Fiscalizacao_{local}.docx")
                     st.write(res)
                 except Exception as e: st.error(f"Erro: {e}")
-
