@@ -274,24 +274,11 @@ with tabs[5]:
     with col2:
         st.write("**Zonas de Proteção e Condicionantes**")
         sel_rh_cond = [i for i in rh_condicionantes if st.checkbox(i)]
-        obs_rh = st.text_area("Notas sobre o Meio Hídrico (Caudal, poluição visível, erosão):")
-    
+        obs_rh = st.text_area("Notas sobre o Meio Hídrico (Caudal, poluição, etc.):")
     st.divider()
-    st.warning("ℹ️ **Nota de Campo:** Verifique a titularidade (Público vs Privado) e a servidão de margem (Art. 21.º da Lei da Água).")
+    st.warning("ℹ️ Nota: Verifique a servidão de margem (Art. 21.º da Lei da Água).")
 
 with tabs[6]:
-    st.subheader("🛠️ Medidas de Minimização Propostas")
-    st.write("Selecione as medidas para mitigação do impacto ambiental/territorial:")
-    sel_medidas = [i for i in medidas_minimizacao if st.checkbox(i)]
-    
-    texto_adicional_medidas = st.text_area("Prescrições técnicas específicas (ex: espécies a plantar, prazos):")
-    st.divider()
-
-    st.subheader("🏁 Finalização e Geração")
-    gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
-    r_crime = st.checkbox("⚠️ Suspeita de Crime (Art. 278.º Código Penal)")
-st.write("---")
-    with tabs[6]:
     st.subheader("🛠️ Medidas de Minimização Propostas")
     sel_medidas = [i for i in medidas_minimizacao if st.checkbox(i)]
     texto_adicional_medidas = st.text_area("Prescrições técnicas específicas:")
@@ -307,20 +294,13 @@ st.write("---")
     st.subheader("⚖️ Regimes Sancionatórios Ativados")
     col_reg1, col_reg2 = st.columns(2)
     with col_reg1:
-        if sel_ren: 
-            st.warning(f"🔹 **REN:** {matriz_sancionatoria['REN']}")
-        if sel_ran_int or sel_ran_cond: 
-            st.warning(f"🔹 **RAN:** {matriz_sancionatoria['RAN']}")
+        if sel_ren: st.warning(f"🔹 **REN:** {matriz_sancionatoria['REN']}")
+        if sel_ran_int or sel_ran_cond: st.warning(f"🔹 **RAN:** {matriz_sancionatoria['RAN']}")
     with col_reg2:
-        if sel_zec or sel_art9: 
-            st.warning(f"🔹 **Natura 2000:** {matriz_sancionatoria['NATURA 2000']}")
-        if sel_rh_int or sel_rh_cond: 
-            st.warning(f"🔹 **Água:** {matriz_sancionatoria['AGUA']}")
+        if sel_zec or sel_art9: st.warning(f"🔹 **Natura 2000:** {matriz_sancionatoria['NATURA 2000']}")
+        if sel_rh_int or sel_rh_cond: st.warning(f"🔹 **Água:** {matriz_sancionatoria['AGUA']}")
 
-    # O restante código (def export_docx e if st.button) deve seguir este mesmo alinhamento
-	
-    
-    # Motor Docx (Função consolidada)
+    # Função interna para exportação
     def export_docx(res_text):
         doc = Document()
         for s in doc.sections:
@@ -341,47 +321,42 @@ st.write("---")
         return buf
 
     if st.button("🚀 Gerar Documentação Final"):
-        if not api_key: 
+        if not api_key:
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A cruzar regimes jurídicos e zonamentos..."):
+            with st.spinner("A cruzar legislação (REN Anexo II, RAN e Água)..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 prompt = f"""
-                Age como Fiscal Sénior e Jurista Especializado em Ordenamento. Redigi Relatório e Auto de Notícia.
+                Age como Fiscal Sénior e Jurista. Redigi Relatório e Auto de Notícia.
                 DADOS: Local {local}, GPS: {lat}, {lon}. Área {area_m2}m2.
                 INFRATOR: {inf_nome}, NIF: {inf_nif}, Tel: {inf_tel} ({tipo_ent}).
                 
                 ENQUADRAMENTO REN (REFINADO):
-                - Áreas REN Afetadas: {sel_ren}.
-                - Ações Identificadas (Anexo II): {sel_comp}.
-                - Títulos/Limites: Comunicação Prévia={c_previa}, Parecer APA={p_apa}, Excede Limites Portaria 419/2012={lim_area_ren}.
-                - Nota Técnica REN: Fundamenta a análise com base no Anexo II da Declaração de Retificação n.º 63-B/2008. Verifica se a ação descrita preenche os requisitos de compatibilidade ou se é interdita pelo Artigo 20.º do DL 166/2008 (na redação do DL 239/2012).
+                - Áreas REN: {sel_ren}.
+                - Ações Compatíveis (Anexo II Decl. Rect. 63-B/2008): {sel_comp if 'sel_comp' in locals() else 'Nenhuma'}.
+                - Falta de Título: Comunicação={c_previa}, Parecer APA={p_apa}, Limites={lim_area_ren}.
+                - Instrução Técnica: Fundamenta a análise no Anexo II da Declaração de Rectificação n.º 63-B/2008 e no Artigo 20.º do DL 166/2008.
                 
                 OUTROS REGIMES:
-                - Rede Natura 2000 (ZECs/ZPEs): {sel_zec}. Zonamento (POAP): {sel_zon}.
-                - Condicionantes Natura (Art 9º nº 2 DL 140/99): {sel_art9}.
-                - RAN (DL 199/2015): Interdições={sel_ran_int}, Condicionantes={sel_ran_cond}. 
-                - Limites RAN Portaria 162/2011: Apoios={lim_apoio}, Habitação={lim_hab}, Vias={lim_vias}, Alternativa={falta_alt}.
-                - PATRIMÓNIO: Interdições={sel_pat_int}, Condicionantes={sel_pat_cond}, Deveres={sel_pat_dev}. Notas={obs_pat}.
-                - RECURSOS HÍDRICOS: Interdições={sel_rh_int}, Condicionantes={sel_rh_cond}. Notas={obs_rh}.
+                - Natura 2000: {sel_zec} / {sel_art9}.
+                - RAN: {sel_ran_int} / {sel_ran_cond}. Limites={lim_apoio}/{lim_hab}/{lim_vias}.
+                - Património: {sel_pat_int}/{sel_pat_cond}. Notas={obs_pat}.
+                - Recursos Hídricos: {sel_rh_int}/{sel_rh_cond}. Notas={obs_rh}.
+                - Minimização: {sel_medidas}. Notas={texto_adicional_medidas}.
                 
-                PROPOSTA E MINIMIZAÇÃO:
-                - Medidas: {sel_medidas}. Prescrições: {texto_adicional_medidas}.
-                - Instrução: Detalha como estas medidas cumprem os princípios da prevenção e precaução.
+                SANCIONATÓRIO:
+                1. REN: Art. 43º DL 166/2008. RAN: Art. 43º DL 73/2009.
+                2. Água/Natura: Lei 50/2006.
+                3. Graduação: Gravidade {gravidade}, Infrator {tipo_ent}. Benefício Económico={beneficio_economico}.
+                4. Acessórias: Embargo e reposição (Art. 30º Lei 50/2006).
                 
-                INSTRUÇÕES SANCIONATÓRIAS:
-                1. PARA A REN: Aplica o Artigo 43.º do DL 166/2008 (redação atual). Tipifica como contraordenação GRAVE ou MUITO GRAVE dependendo do dano ao ecossistema.
-                2. PARA A RAN: Aplica o Artigo 43.º do DL 73/2009. Respeita as molduras específicas (Singulares: 250€-3740€; Coletivas: até 44890€).
-                3. PARA REDE NATURA 2000: Aplica a Lei 50/2006 conforme o Art. 30.º do DL 140/99.
-                4. PARA RECURSOS HÍDRICOS: Aplica o regime da Lei 50/2006 (Art. 96.º da Lei 58/2005) e menciona a falta de TURH (DL 226-A/2007).
-                5. GRADUAÇÃO: Usa a Gravidade {gravidade} e o Infrator {tipo_ent}. Reincidência: {reincidencia}. Benefício Económico ({beneficio_economico}) implica elevação ao terço superior.
-                6. SANÇÕES ACESSÓRIAS: Menciona obrigatoriamente a suspensão de atividades, apreensão de selados/máquinas e a reposição da situação anterior (Art. 30.º Lei 50/2006).
-                7. ESTILO: Formal, PT-PT, capítulos a BOLD, justificado. Fundamenta a NULIDADE de licenças municipais se violarem a Lei 107/2001 ou o RJREN.
+                ESTILO: Formal, PT-PT, capítulos a BOLD.
                 """
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Documentação preparada com sucesso!")
+                    st.success("Documentação preparada!")
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"Fiscalizacao_{local}.docx")
                     st.write(res)
-                except Exception as e: 
-                    st.error(f"Erro na geração: {e}")
+                except Exception as e:
+                    st.error(f"Erro: {e}")
+
