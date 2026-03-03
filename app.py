@@ -140,6 +140,17 @@ rh_condicionantes = [
     "⚠️ Limpeza de linhas de água com destruição de galeria ripícola autóctone"
 ]
 
+# 🛠️ MEDIDAS DE MINIMIZAÇÃO E REPOSIÇÃO
+medidas_minimizacao = [
+    "🌱 Reposição da topografia original e do coberto vegetal autóctone",
+    "🧱 Utilização de pavimentos permeáveis ou semipermeáveis",
+    "🌳 Criação de cortinas arbóreas para integração paisagística",
+    "💧 Implementação de sistemas de retenção e infiltração de águas pluviais",
+    "🏗️ Redução da área de impermeabilização ou da cércea da edificação",
+    "🚧 Remoção imediata de entulhos e resíduos de construção",
+    "🛡️ Instalação de barreiras acústicas ou de contenção de poeiras"
+]
+
 # --- INTERFACE ---
 st.title("🛡️ Sistema de Fiscalização: Master Território e Ambiente")
 
@@ -231,6 +242,12 @@ with tabs[5]:
 
     st.divider()
     st.warning("ℹ️ **Nota de Campo:** Verifique a titularidade (Público vs Privado) e a servidão de margem (Art. 21.º da Lei da Água).")
+	st.subheader("🛠️ Medidas de Minimização Propostas")
+    st.write("Selecione as medidas para mitigação do impacto ambiental/territorial:")
+    sel_medidas = [i for i in medidas_minimizacao if st.checkbox(i)]
+    
+    texto_adicional_medidas = st.text_area("Prescrições técnicas específicas (ex: espécies a plantar, prazos):")
+    st.divider()
 
 with tabs[6]:
     st.subheader("🏁 Finalização e Geração")
@@ -281,6 +298,9 @@ with tabs[6]:
 				- RECURSOS HÍDRICOS: Interdições={sel_rh_int}, Condicionantes={sel_rh_cond}.
 				- Notas Adicionais Recursos Hídricos: {obs_rh}.
 				- Importante: Fundamenta com base no regime de utilização dos recursos hídricos (DL 226-A/2007) e a necessidade de Título de Utilização (TURH).
+				- MEDIDAS DE MINIMIZAÇÃO PROPOSTAS: {sel_medidas}.
+				- PRESCRIÇÕES TÉCNICAS ADICIONAIS: {texto_adicional_medidas}.
+				- Instrução: No capítulo da 'PROPOSTA', detalha como estas medidas ajudam a cumprir os princípios da prevenção e da precaução ambiental.
                 
                 INSTRUÇÕES:
                 1. No RELATÓRIO: Cita o n.º 2 do Artigo 9.º do DL 140/99 na íntegra para as condicionantes selecionadas.
@@ -294,4 +314,6 @@ with tabs[6]:
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"Fiscalizacao_{local}.docx")
                     st.write(res)
                 except Exception as e: st.error(f"Erro: {e}")
+
+
 
