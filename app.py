@@ -5,6 +5,7 @@ from docx.shared import Pt, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from io import BytesIO
 import re
+from pypdf import PdfReader
 
 # 1. Configuração de Interface
 st.set_page_config(page_title="Fiscalização Pro: Matriz Legal Total", layout="wide", page_icon="🛡️")
@@ -32,12 +33,47 @@ if api_key:
 
 # --- BASE DE DADOS CONSOLIDADAS ---
 
-ren_litoral = ["Faixa marítima de proteção", "Praias", "Barreiras detríticas", "Tômbolos", "Sapais", "Ilhéus", "Dunas", "Arribas", "Faixa terrestre", "Águas de transição"]
-ren_hidro = ["Cursos de água", "Lagoas e lagos", "Albufeiras", "Áreas de recarga de aquíferos"]
-ren_riscos = ["Zonas adjacentes", "Zonas ameaçadas pelo mar", "Zonas ameaçadas pelas cheias", "Elevado risco de erosão", "Instabilidade de vertentes"]
+# 💧 REN - TIPOLOGIAS REFINADAS (DL 166/2008 + DL 239/2012 + Decl. Ret. 63-B/2008)
+ren_litoral = [
+    "Faixa marítima de proteção", "Praias", "Barreiras detríticas (ilhas-barreira, restingas e tômbolos)", 
+    "Sapais", "Ilhéus e rochedos emersos no mar", "Dunas costeiras e dunas fósseis", 
+    "Arribas e respetivas faixas de proteção", "Faixa terrestre de proteção costeira", 
+    "Águas de transição e respetivas faixas de proteção (leitos e margens)"
+]
 
-zec_zpe_lista = ["ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Rio Zêzere", "ZEC Albufeira de Castelo do Bode", "ZEC Sicó/Alvaiázere", "ZEC Serra da Lousã", "ZEC Rio Vouga", "ZEC Rio Paiva", "ZEC Arrábida/Espichel", "ZEC Estuário do Tejo", "ZEC Monfurado", "ZEC Costa Vicentina", "ZEC Sintra-Cascais", "ZPE Paul do Boquilobo", "ZPE Estuário do Mondego", "ZPE Lagoa de Albufeira", "ZPE Douro Internacional", "ZPE Castro Verde", "ZPE Ria de Aveiro", "ZPE Beira Interior"]
+ren_hidro = [
+    "Cursos de água e respetivos leitos e margens", 
+    "Lagoas e lagos e respetivos leitos, margens e faixas de proteção", 
+    "Albufeiras que contribuam para a conectividade e coerência ecológica (leitos, margens e faixas de proteção)", 
+    "Áreas estratégicas de proteção e recarga de aquíferos (Cabeceiras e áreas de infiltração máxima)"
+]
 
+ren_riscos = [
+    "Zonas adjacentes (Lei da Titularidade dos Recursos Hídricos)", 
+    "Zonas ameaçadas pelo mar (Zonas de galgamento ou erosão)", 
+    "Zonas ameaçadas pelas cheias (Leitos de cheia)", 
+    "Áreas de elevado risco de erosão hídrica do solo", 
+    "Áreas de instabilidade de vertentes (Escarpas e faixas de proteção)"
+]
+# 🔍 CRITÉRIOS DE COMPATIBILIDADE (ANEXO II - Decl. Retificação 63-B/2008)
+ren_acoes_compativeis = [
+    "✅ Operações de defesa da floresta contra incêndios (isentas em certas condições)",
+    "✅ Infraestruturas de saneamento, abastecimento e energia (sujeitas a autorização)",
+    "✅ Vias de comunicação e transporte (sujeitas a parecer DGArru/APA)",
+    "✅ Aproveitamentos hidráulicos e de recursos geológicos (sujeitos a título)",
+    "✅ Instalações de apoio a atividades agrícolas/florestais (conforme limites Portaria 419/2012)"
+]
+
+# 🌿 REDE NATURA 2000 (Sítios ZEC e ZPE - Listagem Expandida)
+zec_zpe_lista = [
+    "ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Rio Zêzere", "ZEC Albufeira de Castelo do Bode", 
+    "ZEC Sicó/Alvaiázere", "ZEC Serra da Lousã", "ZEC Rio Vouga", "ZEC Rio Paiva", "ZEC Arrábida/Espichel", 
+    "ZEC Estuário do Tejo", "ZEC Monfurado", "ZEC Costa Vicentina", "ZEC Sintra-Cascais", 
+    "ZPE Paul do Boquilobo", "ZPE Estuário do Mondego", "ZPE Lagoa de Albufeira", "ZPE Douro Internacional", 
+    "ZPE Castro Verde", "ZPE Ria de Aveiro", "ZPE Beira Interior"
+]
+
+# 🌿 CONDICIONANTES ART. 9.º N.º 2 (DL 140/99 - Texto Integral)
 condicionantes_art9 = [
     "a) A realização de obras de construção civil fora dos perímetros urbanos, com excepção das obras de reconstrução, demolição, conservação de edifícios e ampliação desde que esta não envolva aumento de área de implantação superior a 50% da área inicial e a área total de ampliação seja inferior a 100 m2",
     "b) A alteração do uso actual do solo que abranja áreas contínuas superiores a 5 ha",
@@ -52,10 +88,32 @@ condicionantes_art9 = [
     "l) A reintrodução de espécies indígenas da fauna e da flora selvagens"
 ]
 
-rnap_lista = ["Parque Natural das Serras de Aire e Candeeiros", "Parque Natural da Serra da Estrela", "Parque Natural do Tejo Internacional", "Parque Natural do Douro Internacional", "Reserva Natural do Paul do Boquilobo", "Reserva Natural da Serra da Malcata", "Reserva Natural das Berlengas", "Reserva Natural do Paul de Arzila", "Reserva Natural das Dunas de São Jacinto", "Paisagem Protegida da Serra do Açor", "Monumento Natural do Cabo Mondego", "Monumento Natural das Pegadas de Dinossáurios de Ourém/Torres Novas"]
+# 🌿 ÁREAS PROTEGIDAS (RNAP)
+rnap_lista = [
+    "Parque Natural das Serras de Aire e Candeeiros",
+    "Parque Natural da Serra da Estrela",
+    "Parque Natural do Tejo Internacional",
+    "Parque Natural do Douro Internacional",
+    "Reserva Natural do Paul do Boquilobo",
+    "Reserva Natural da Serra da Malcata",
+    "Reserva Natural das Berlengas",
+    "Reserva Natural do Paul de Arzila",
+    "Reserva Natural das Dunas de São Jacinto",
+    "Paisagem Protegida da Serra do Açor",
+    "Monumento Natural do Cabo Mondego",
+    "Monumento Natural das Pegadas de Dinossáurios de Ourém/Torres Novas"
+]
 
-zonamento_tipologias = ["Reserva Integral", "Reserva Parcial I", "Reserva Parcial II", "Proteção Parcial I", "Proteção Parcial II", "Proteção Complementar I", "Proteção Complementar II", "Área de Intervenção Específica", "Zona de Proteção Estrita", "Zona de Proteção de Albufeira"]
+# 🌿 ZONAMENTO (POAP / PNA / RJUE)
+zonamento_tipologias = [
+    "Reserva Integral", "Reserva Parcial I", "Reserva Parcial II", 
+    "Proteção Parcial I", "Proteção Parcial II", "Proteção Complementar I", 
+    "Proteção Complementar II", "Área de Intervenção Específica", 
+    "Zona de Proteção Estrita", "Zona de Proteção de Albufeira"
+]
 
+# 🌾 RAN (DL 73/2009 + DL 199/2015)
+# 🌾 RAN - MATRIZ TÉCNICA (DL 73/2009 + DL 199/2015 + Portaria 162/2011)
 inf_ran_interdicoes = [
     "🚫 (Int.) Utilização de terras para fins não agrícolas (sem enquadramento)",
     "🚫 (Int.) Ações que destruam ou degradem o potencial agrícola do solo",
@@ -71,6 +129,7 @@ inf_ran_condicionantes = [
     "⚠️ (Cond.) Infraestruturas (energia/vias) sem verificação de inexistência de alternativa"
 ]
 
+# 🏛️ PATRIMÓNIO CULTURAL (Lei 107/2001)
 patrimonio_interdicoes = [
     "🚫 Obra/Intervenção sem autorização da DGPC/DRC (Interior ou Exterior)",
     "🚫 Mudança de uso que afete o valor do bem classificado",
@@ -91,6 +150,7 @@ patrimonio_deveres = [
     "❗ Violação do dever de facultar o acesso para inspeção técnica"
 ]
 
+# 💧 RECURSOS HÍDRICOS (Lei n.º 58/2005 - Lei da Água)
 rh_interdicoes = [
     "🚫 Utilização do Domínio Público Hídrico sem Título (Licença/Concessão)",
     "🚫 Alteração do leito ou das margens de cursos de água",
@@ -106,6 +166,7 @@ rh_condicionantes = [
     "⚠️ Limpeza de linhas de água com destruição de galeria ripícola autóctone"
 ]
 
+# 🛠️ MEDIDAS DE MINIMIZAÇÃO E REPOSIÇÃO
 medidas_minimizacao = [
     "🌱 Reposição da topografia original e do coberto vegetal autóctone",
     "🧱 Utilização de pavimentos permeáveis ou semipermeáveis",
@@ -116,11 +177,12 @@ medidas_minimizacao = [
     "🛡️ Instalação de barreiras acústicas ou de contenção de poeiras"
 ]
 
+# 💰 MATRIZ JURÍDICA DE SANÇÕES
 matriz_sancionatoria = {
-    "REN": "DL 166/2008, Art. 43.º",
-    "RAN": "DL 73/2009, Art. 43.º",
-    "NATURA 2000": "DL 140/99, Art. 30.º / Lei 50/2006",
-    "AGUA": "Lei 58/2005, Art. 95.º e 96.º / Lei 50/2006"
+    "REN": "DL 166/2008, Art. 43.º (Contraordenações Graves ou Muito Graves)",
+    "RAN": "DL 73/2009, Art. 43.º (Coimas de 250€ a 3.740€ para pessoas singulares e até 44.890€ para coletivas)",
+    "NATURA 2000": "DL 140/99, Art. 30.º (Remete para a Lei 50/2006)",
+    "AGUA": "Lei 58/2005, Art. 95.º e 96.º (Remete para o regime da Lei 50/2006)"
 }
 
 # --- INTERFACE ---
@@ -148,16 +210,18 @@ with tabs[0]:
         desc_visual = st.text_area("Notas de Campo")
 
 with tabs[1]:
-    st.info("**Tipologias REN (DL 166/2008 + DL 239/2012)**")
+    st.info("**Regime Jurídico da REN (DL 166/2008, DL 239/2012 e Portaria 419/2012)**")
     col1, col2 = st.columns(2)
     with col1:
-        st.write("**Áreas Afetadas**")
+        st.write("**1. Tipologia de Área Integrada na REN**")
         sel_ren = [i for i in (ren_litoral + ren_hidro + ren_riscos) if st.checkbox(i, key=f"ren_{i}")]
     with col2:
-        st.write("**Interdições e Títulos**")
-        c_previa = st.checkbox("Falta de Comunicação Prévia")
-        p_apa = st.checkbox("Falta de Parecer APA")
-        lim_area_ren = st.checkbox("Excede limites de área/impermeabilização REN")
+        st.write("**2. Ações e Títulos (Decl. Ret. 63-B/2008)**")
+        sel_comp = [i for i in ren_acoes_compativeis if st.checkbox(i)]
+        st.divider()
+        c_previa = st.checkbox("Falta de Comunicação Prévia (Art. 21.º)")
+        p_apa = st.checkbox("Falta de Parecer/Autorização APA/CCDR (Art. 20.º)")
+        lim_area_ren = st.checkbox("Excede limites de impermeabilização/área (Portaria 419/2012)")
 
 with tabs[2]:
     st.success("**Conservação da Natureza (DL 140/99 + DL 142/2008)**")
@@ -181,13 +245,13 @@ with tabs[3]:
         sel_ran_cond = [i for i in inf_ran_condicionantes if st.checkbox(i)]
     with col2:
         st.write("**Verificação de Limites Técnicos (Portaria 162/2011)**")
-        lim_apoio = st.checkbox("Apoio Agrícola > 750m² ou >1% da área")
-        lim_hab = st.checkbox("Habitação Agricultor > 300m²")
-        lim_vias = st.checkbox("Vias de acesso > 5m ou pavimento impermeável")
-        falta_alt = st.checkbox("Falta de prova de inexistência de alternativa fora da RAN")
+        lim_apoio = st.checkbox("Apoio Agrícola > 750m² ou >1% da área da exploração")
+        lim_hab = st.checkbox("Habitação Agricultor > 300m² ou sem ónus de inalienabilidade")
+        lim_vias = st.checkbox("Vias de acesso > 5m de largura ou pavimento impermeável")
+        falta_alt = st.checkbox("Falta de prova de inexistência de alternativa viável fora da RAN")
 
 with tabs[4]:
-    st.warning("**Património Cultural (Lei 107/2001)**")
+    st.warning("**Património Cultural (Lei 107/2001 - Bases da Política e do Regime de Proteção)**")
     col1, col2 = st.columns(2)
     with col1:
         st.write("**Interdições e Condicionantes**")
@@ -196,36 +260,37 @@ with tabs[4]:
     with col2:
         st.write("**Deveres do Proprietário e Arqueologia**")
         sel_pat_dev = [i for i in patrimonio_deveres if st.checkbox(i)]
-        obs_pat = st.text_area("Notas Técnicas (Estado de conservação, tipologia, etc.):")
+        obs_pat = st.text_area("Notas Técnicas (Estado de conservação, tipologia do bem, etc.):")
+    
     st.divider()
-    st.info("ℹ️ Nota Jurídica: Licenças que infrinjam estas normas são nulas (Art. 4.º e 5.º Lei 107/2001).")
-
+    st.info("ℹ️ **Nota Jurídica:** Licenças municipais que infrinjam estas normas são nulas (Art. 4.º e 5.º da Lei 107/2001).")
+	
 with tabs[5]:
     st.info("**Recursos Hídricos (Lei da Água - Lei n.º 58/2005)**")
     col1, col2 = st.columns(2)
     with col1:
-        st.write("**Interdições e Utilizações**")
+        st.write("**Interdições e Utilizações Principais**")
         sel_rh_int = [i for i in rh_interdicoes if st.checkbox(i)]
     with col2:
-        st.write("**Zonas de Proteção**")
+        st.write("**Zonas de Proteção e Condicionantes**")
         sel_rh_cond = [i for i in rh_condicionantes if st.checkbox(i)]
-        obs_rh = st.text_area("Notas sobre o Meio Hídrico:")
+        obs_rh = st.text_area("Notas sobre o Meio Hídrico (Caudal, poluição visível, erosão):")
+    
     st.divider()
-    st.warning("ℹ️ Verifique a titularidade e a servidão de margem (Art. 21.º Lei da Água).")
+    st.warning("ℹ️ **Nota de Campo:** Verifique a titularidade (Público vs Privado) e a servidão de margem (Art. 21.º da Lei da Água).")
 
 with tabs[6]:
     st.subheader("🛠️ Medidas de Minimização Propostas")
+    st.write("Selecione as medidas para mitigação do impacto ambiental/territorial:")
     sel_medidas = [i for i in medidas_minimizacao if st.checkbox(i)]
-    texto_adicional_medidas = st.text_area("Prescrições técnicas específicas:")
     
+    texto_adicional_medidas = st.text_area("Prescrições técnicas específicas (ex: espécies a plantar, prazos):")
     st.divider()
+
     st.subheader("🏁 Finalização e Geração")
     gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
     r_crime = st.checkbox("⚠️ Suspeita de Crime (Art. 278.º Código Penal)")
-    beneficio_economico = st.checkbox("Benefício económico mensurável?")
-    reincidencia = st.checkbox("Reincidência por parte do infrator?")
-
-    st.write("---")
+	st.write("---")
     st.subheader("⚖️ Regimes Sancionatórios Ativados")
     col_reg1, col_reg2 = st.columns(2)
     with col_reg1:
@@ -234,7 +299,9 @@ with tabs[6]:
     with col_reg2:
         if sel_zec or sel_art9: st.warning(f"🔹 **Natura 2000:** {matriz_sancionatoria['NATURA 2000']}")
         if sel_rh_int or sel_rh_cond: st.warning(f"🔹 **Água:** {matriz_sancionatoria['AGUA']}")
-
+	
+    
+    # Motor Docx (Função consolidada)
     def export_docx(res_text):
         doc = Document()
         for s in doc.sections:
@@ -255,39 +322,48 @@ with tabs[6]:
         return buf
 
     if st.button("🚀 Gerar Documentação Final"):
-        if not api_key:
+        if not api_key: 
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A gerar relatório jurídico..."):
+            with st.spinner("A cruzar regimes jurídicos e zonamentos..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 prompt = f"""
-                Age como Fiscal Sénior e Jurista. Redigi Relatório e Auto de Notícia.
+                Age como Fiscal Sénior e Jurista Especializado em Ordenamento. Redigi Relatório e Auto de Notícia.
                 DADOS: Local {local}, GPS: {lat}, {lon}. Área {area_m2}m2.
                 INFRATOR: {inf_nome}, NIF: {inf_nif}, Tel: {inf_tel} ({tipo_ent}).
                 
-                ENQUADRAMENTO:
-                - REN: {sel_ren}. Interdições: {c_previa}/{p_apa}.
-                - Natura 2000: {sel_zec}. Zonamento: {sel_zon}. Art 9º nº 2: {sel_art9}.
-                - RAN: Interdições={sel_ran_int}, Condicionantes={sel_ran_cond}. Limites={lim_apoio}/{lim_hab}/{lim_vias}.
-                - PATRIMÓNIO: {sel_pat_int}/{sel_pat_cond}. Deveres={sel_pat_dev}. Notas={obs_pat}.
-                - RECURSOS HÍDRICOS: {sel_rh_int}/{sel_rh_cond}. Notas={obs_rh}.
-                - MINIMIZAÇÃO: {sel_medidas}. Notas={texto_adicional_medidas}.
-                - CRIME Art 278 CP: {r_crime}. Reincidência: {reincidencia}. Benefício: {beneficio_economico}.
+                ENQUADRAMENTO REN (REFINADO):
+                - Áreas REN Afetadas: {sel_ren}.
+                - Ações Identificadas (Anexo II): {sel_comp}.
+                - Títulos/Limites: Comunicação Prévia={c_previa}, Parecer APA={p_apa}, Excede Limites Portaria 419/2012={lim_area_ren}.
+                - Nota Técnica REN: Fundamenta a análise com base no Anexo II da Declaração de Retificação n.º 63-B/2008. Verifica se a ação descrita preenche os requisitos de compatibilidade ou se é interdita pelo Artigo 20.º do DL 166/2008 (na redação do DL 239/2012).
+                
+                OUTROS REGIMES:
+                - Rede Natura 2000 (ZECs/ZPEs): {sel_zec}. Zonamento (POAP): {sel_zon}.
+                - Condicionantes Natura (Art 9º nº 2 DL 140/99): {sel_art9}.
+                - RAN (DL 199/2015): Interdições={sel_ran_int}, Condicionantes={sel_ran_cond}. 
+                - Limites RAN Portaria 162/2011: Apoios={lim_apoio}, Habitação={lim_hab}, Vias={lim_vias}, Alternativa={falta_alt}.
+                - PATRIMÓNIO: Interdições={sel_pat_int}, Condicionantes={sel_pat_cond}, Deveres={sel_pat_dev}. Notas={obs_pat}.
+                - RECURSOS HÍDRICOS: Interdições={sel_rh_int}, Condicionantes={sel_rh_cond}. Notas={obs_rh}.
+                
+                PROPOSTA E MINIMIZAÇÃO:
+                - Medidas: {sel_medidas}. Prescrições: {texto_adicional_medidas}.
+                - Instrução: Detalha como estas medidas cumprem os princípios da prevenção e precaução.
                 
                 INSTRUÇÕES SANCIONATÓRIAS:
-                1. REN: Aplica Art. 43º DL 166/2008.
-                2. RAN: Aplica Art. 43º DL 73/2009 (Singulares: 250€-3740€; Coletivas: até 44890€).
-                3. NATURA: Lei 50/2006 (Art. 30º DL 140/99).
-                4. ÁGUA: Lei 50/2006 (Art. 96º Lei 58/2005).
-                5. GRADUAÇÃO: Gravidade {gravidade}, Infrator {tipo_ent}. Benefício Económico elevado ao terço superior.
-                6. SANÇÕES ACESSÓRIAS: Suspensão e reposição (Art. 30º Lei 50/2006).
-                7. ESTILO: Formal, PT-PT, BOLD nos capítulos.
+                1. PARA A REN: Aplica o Artigo 43.º do DL 166/2008 (redação atual). Tipifica como contraordenação GRAVE ou MUITO GRAVE dependendo do dano ao ecossistema.
+                2. PARA A RAN: Aplica o Artigo 43.º do DL 73/2009. Respeita as molduras específicas (Singulares: 250€-3740€; Coletivas: até 44890€).
+                3. PARA REDE NATURA 2000: Aplica a Lei 50/2006 conforme o Art. 30.º do DL 140/99.
+                4. PARA RECURSOS HÍDRICOS: Aplica o regime da Lei 50/2006 (Art. 96.º da Lei 58/2005) e menciona a falta de TURH (DL 226-A/2007).
+                5. GRADUAÇÃO: Usa a Gravidade {gravidade} e o Infrator {tipo_ent}. Reincidência: {reincidencia}. Benefício Económico ({beneficio_economico}) implica elevação ao terço superior.
+                6. SANÇÕES ACESSÓRIAS: Menciona obrigatoriamente a suspensão de atividades, apreensão de selados/máquinas e a reposição da situação anterior (Art. 30.º Lei 50/2006).
+                7. ESTILO: Formal, PT-PT, capítulos a BOLD, justificado. Fundamenta a NULIDADE de licenças municipais se violarem a Lei 107/2001 ou o RJREN.
                 """
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Pronto!")
+                    st.success("Documentação preparada com sucesso!")
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"Fiscalizacao_{local}.docx")
                     st.write(res)
-                except Exception as e:
-                    st.error(f"Erro: {e}")
+                except Exception as e: 
+                    st.error(f"Erro na geração: {e}")
 
