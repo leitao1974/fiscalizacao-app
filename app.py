@@ -239,17 +239,18 @@ with tabs[5]:
         st.write("**Zonas de Proteção e Condicionantes**")
         sel_rh_cond = [i for i in rh_condicionantes if st.checkbox(i)]
         obs_rh = st.text_area("Notas sobre o Meio Hídrico (Caudal, poluição visível, erosão):")
-
+    
     st.divider()
     st.warning("ℹ️ **Nota de Campo:** Verifique a titularidade (Público vs Privado) e a servidão de margem (Art. 21.º da Lei da Água).")
-	st.subheader("🛠️ Medidas de Minimização Propostas")
+
+with tabs[6]:
+    st.subheader("🛠️ Medidas de Minimização Propostas")
     st.write("Selecione as medidas para mitigação do impacto ambiental/territorial:")
     sel_medidas = [i for i in medidas_minimizacao if st.checkbox(i)]
     
     texto_adicional_medidas = st.text_area("Prescrições técnicas específicas (ex: espécies a plantar, prazos):")
     st.divider()
 
-with tabs[6]:
     st.subheader("🏁 Finalização e Geração")
     gravidade = st.select_slider("Gravidade Proposta", options=["Leve", "Grave", "Muito Grave"])
     r_crime = st.checkbox("⚠️ Suspeita de Crime (Art. 278.º Código Penal)")
@@ -275,7 +276,8 @@ with tabs[6]:
         return buf
 
     if st.button("🚀 Gerar Documentação Final"):
-        if not api_key: st.error("Falta a API Key.")
+        if not api_key: 
+            st.error("Falta a API Key.")
         else:
             with st.spinner("A cruzar regimes jurídicos e zonamentos..."):
                 model = genai.GenerativeModel(modelo_selecionado)
@@ -291,16 +293,16 @@ with tabs[6]:
                 - Zonamento (POAP): {sel_zon}.
                 - Natura 2000 (Art 9º nº 2 DL 140/99): {sel_art9}.
                 - RAN (DL 199/2015): Interdições={sel_ran_int}, Condicionantes={sel_ran_cond}. 
-				- Limites Técnicos Portaria 162/2011: Apoios={lim_apoio}, Habitação={lim_hab}, Vias={lim_vias}, Alternativa={falta_alt}.
+                - Limites Técnicos Portaria 162/2011: Apoios={lim_apoio}, Habitação={lim_hab}, Vias={lim_vias}, Alternativa={falta_alt}.
                 - PATRIMÓNIO CULTURAL: Interdições={sel_pat_int}, Condicionantes={sel_pat_cond}, Incumprimento de Deveres={sel_pat_dev}.
-				- Notas Adicionais Património: {obs_pat}.
-				- Nota: Fundamenta a NULIDADE de eventuais licenças administrativas caso violem a Lei 107/2001.
-				- RECURSOS HÍDRICOS: Interdições={sel_rh_int}, Condicionantes={sel_rh_cond}.
-				- Notas Adicionais Recursos Hídricos: {obs_rh}.
-				- Importante: Fundamenta com base no regime de utilização dos recursos hídricos (DL 226-A/2007) e a necessidade de Título de Utilização (TURH).
-				- MEDIDAS DE MINIMIZAÇÃO PROPOSTAS: {sel_medidas}.
-				- PRESCRIÇÕES TÉCNICAS ADICIONAIS: {texto_adicional_medidas}.
-				- Instrução: No capítulo da 'PROPOSTA', detalha como estas medidas ajudam a cumprir os princípios da prevenção e da precaução ambiental.
+                - Notas Adicionais Património: {obs_pat}.
+                - Nota: Fundamenta a NULIDADE de eventuais licenças administrativas caso violem a Lei 107/2001.
+                - RECURSOS HÍDRICOS: Interdições={sel_rh_int}, Condicionantes={sel_rh_cond}.
+                - Notas Adicionais Recursos Hídricos: {obs_rh}.
+                - Importante: Fundamenta com base no regime de utilização dos recursos hídricos (DL 226-A/2007) e a necessidade de Título de Utilização (TURH).
+                - MEDIDAS DE MINIMIZAÇÃO PROPOSTAS: {sel_medidas}.
+                - PRESCRIÇÕES TÉCNICAS ADICIONAIS: {texto_adicional_medidas}.
+                - Instrução: No capítulo da 'PROPOSTA', detalha como estas medidas ajudam a cumprir os princípios da prevenção e da precaução ambiental.
                 
                 INSTRUÇÕES:
                 1. No RELATÓRIO: Cita o n.º 2 do Artigo 9.º do DL 140/99 na íntegra para as condicionantes selecionadas.
@@ -313,7 +315,7 @@ with tabs[6]:
                     st.success("Documentação preparada!")
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"Fiscalizacao_{local}.docx")
                     st.write(res)
-                except Exception as e: st.error(f"Erro: {e}")
-
+                except Exception as e: 
+                    st.error(f"Erro: {e}")
 
 
