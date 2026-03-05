@@ -266,7 +266,7 @@ with tabs[1]:
         sel_inter_ren = [i for i in ren_interdicoes_gerais if st.checkbox(i)]
         
     with col_t2:
-        st.subheader("2. Usos e Títulos")
+        st.subheader("2. Regime de Controlo")
         sel_regime_ren = st.radio("Enquadramento da Ação:", ren_regimes_controlo)
         st.write("---")
         st.write("**Verificação de Conformidade:**")
@@ -450,6 +450,7 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
 
 
