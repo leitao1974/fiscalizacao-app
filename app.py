@@ -134,22 +134,23 @@ zonamento_tipologias = [
     "Zona de Proteção Estrita", "Zona de Proteção de Albufeira"
 ]
 
-# 🌾 RAN (DL 73/2009 + DL 199/2015)
-# 🌾 RAN - MATRIZ TÉCNICA (DL 73/2009 + DL 199/2015 + Portaria 162/2011)
-inf_ran_interdicoes = [
-    "🚫 (Int.) Utilização de terras para fins não agrícolas (sem enquadramento)",
-    "🚫 (Int.) Ações que destruam ou degradem o potencial agrícola do solo",
-    "🚫 (Int.) Impermeabilização definitiva de solos de alta qualidade (Classe A/B)",
-    "🚫 (Int.) Deposição de estéreis, resíduos ou materiais de construção",
-    "🚫 (Int.) Intervenção em área beneficiada por Aproveitamento Hidroagrícola (Regadio Público)"
+# 🌾 RAN - MATRIZ TÉCNICA REFINADA (DL 199/2015 + Portaria 162/2011)
+ran_interdicoes_gerais = [
+    "🏗️ Operações de loteamento e urbanização",
+    "🧱 Obras de construção ou ampliação (sem enquadramento)",
+    "🛣️ Instalação de vias de comunicação e acessos",
+    "🚜 Escavações e aterros que alterem o perfil do solo",
+    "🪓 Destruição do revestimento vegetal (não agrícola/florestal)"
 ]
 
-inf_ran_condicionantes = [
-    "⚠️ (Cond.) Apoios agrícolas sem parecer da Entidade Regional da RAN",
-    "⚠️ (Cond.) Habitação de agricultor sem título de parecer vinculado",
-    "⚠️ (Cond.) Obras de utilidade pública sem despacho de reconhecimento (Art. 25.º)",
-    "⚠️ (Cond.) Infraestruturas (energia/vias) sem verificação de inexistência de alternativa"
-]
+ran_limites_dict = {
+    "Habitação Própria": "ATI Máxima: 500 m²",
+    "Turismo em Espaço Rural (TER)": "Máximo 20% da área (limite 5.000 m²)",
+    "Unidades Agro-industriais": "Máximo 10% da área (limite 2.000 m²)",
+    "Apoios Agrícolas": "Área de implantação ≤ 40 m²",
+    "Cabinas de Rega": "Área inferior a 4 m²",
+    "Muros de Suporte": "Limite à cota do terreno ou +0,20m"
+}
 
 # 🏛️ PATRIMÓNIO CULTURAL (Lei 107/2001)
 patrimonio_interdicoes = [
@@ -292,18 +293,38 @@ with tabs[2]:
         upload_poap = st.file_uploader("📂 Upload Regulamento POAP (PDF)", type=['pdf'])
 
 with tabs[3]:
-    st.info("**Reserva Agrícola Nacional (DL 199/2015 + Portaria 162/2011)**")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("**Interdições e Condicionantes RAN**")
-        sel_ran_int = [i for i in inf_ran_interdicoes if st.checkbox(i)]
-        sel_ran_cond = [i for i in inf_ran_condicionantes if st.checkbox(i)]
-    with col2:
-        st.write("**Verificação de Limites Técnicos (Portaria 162/2011)**")
-        lim_apoio = st.checkbox("Apoio Agrícola > 750m² ou >1% da área da exploração")
-        lim_hab = st.checkbox("Habitação Agricultor > 300m² ou sem ónus de inalienabilidade")
-        lim_vias = st.checkbox("Vias de acesso > 5m de largura ou pavimento impermeável")
-        falta_alt = st.checkbox("Falta de prova de inexistência de alternativa viável fora da RAN")
+    st.info("**Reserva Agrícola Nacional (DL 73/2009 atualizado pelo DL 199/2015)**")
+    
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+        st.subheader("1. Interdições e Uso do Solo")
+        st.write("**Interdições Gerais Observadas:**")
+        sel_inter_ran = [i for i in ran_interdicoes_gerais if st.checkbox(i)]
+        
+        st.divider()
+        st.write("**Regime de Controlo Administrativo:**")
+        regime_ran = st.radio("Procedimento:", 
+            ["Isenção (Reduzido impacto)", "Comunicação Prévia (Prazo 22 dias)", "Relevante Interesse Público (Despacho)"], 
+            key="reg_ran")
+
+    with col_t2: # Coluna Direita
+        st.subheader("2. Verificação de Limites (Portaria 162/2011)")
+        st.write("A pretensão excede os limites máximos?")
+        
+        # Checkboxes baseadas nos limites da Portaria
+        lim_hab = st.checkbox("Habitação: Excede ATI de 500 m²")
+        lim_turismo = st.checkbox("Turismo: Excede 20% da área ou 5.000 m²")
+        lim_agroind = st.checkbox("Agro-indústria: Excede 10% ou 2.000 m²")
+        lim_apoio = st.checkbox("Apoio Agrícola: Área > 40 m²")
+        
+        st.divider()
+        st.write("**Critérios de Rejeição:**")
+        falta_alternativa = st.checkbox("Existe alternativa viável fora da RAN")
+        impacto_biofisico = st.checkbox("Afeta o equilíbrio do sistema biofísico")
+        parecer_apa_neg = st.checkbox("Parecer desfavorável da APA (se aplicável)")
+
+    st.divider()
+    st.caption("Nota: A CCDR Centro tem 22 dias para rejeitar a Comunicação Prévia; a ausência de resposta nesse prazo viabiliza a pretensão.")
 
 with tabs[4]:
     st.warning("**Património Cultural (Lei 107/2001 - Bases da Política e do Regime de Proteção)**")
@@ -424,7 +445,17 @@ with tabs[7]:
                 - Classifica a gravidade: LEVE (falta de comunicação), GRAVE (falta de autorização), ou MUITO GRAVE (usos interditos ou violação de embargo).
 				- REN: {sel_ren}. Ações Anexo II: {sel_comp if 'sel_comp' in locals() else 'Não selecionado'}.
                 - NATURA 2000 & AP: {sel_zec} / {sel_rnap}. Condicionantes Art. 9º nº 2: {sel_art9}.
-                - RAN: {sel_ran_int} / {sel_ran_cond}. Limites Técnicos: {lim_apoio}/{lim_hab}/{lim_vias}.
+                # No ENQUADRAMENTO RAN do Prompt:
+                - INTERDIÇÕES RAN: {sel_inter_ran}.
+                - REGIME ESCOLHIDO: {regime_ran}.
+                - VIOLAÇÃO DE LIMITES (Portaria 162/2011): Habitação={lim_hab}, Turismo={lim_turismo}, Agroindústria={lim_agroind}, Apoio={lim_apoio}.
+                - FATORES DE REJEIÇÃO: Falta Alternativa={falta_alternativa}, Impacto Biofísico={impacto_biofisico}, Parecer APA={parecer_apa_neg}.
+
+                # Nas INSTRUÇÕES DE FUNDAMENTAÇÃO:
+                - PARA A RAN: Se houver violação de limites ({lim_hab}, {lim_turismo}, etc.), fundamenta com base na Portaria n.º 162/2011.
+                - Menciona a obrigação de preservação da aptidão produtiva do solo conforme o DL 199/2015.
+                - Analisa a questão da 'Inexistência de alternativa viável' como critério cumulativo para qualquer uso não agrícola.
+                - Refere o prazo de 22 dias de oposição sucessiva da CCDR Centro no regime de Comunicação Prévia.
                 - PDM (Ordenamento): Classe={sel_pdm}. Conformidade={confo_pdm}. Artigo={artigo_pdm}.
                 - ANÁLISE TÉCNICA PDM: {desc_pdm}
                 - RECURSOS HÍDRICOS: {sel_rh_int}/{sel_rh_cond}.
@@ -450,6 +481,7 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
 
 
