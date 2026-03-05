@@ -55,13 +55,22 @@ ren_riscos = [
     "Áreas de elevado risco de erosão hídrica do solo", 
     "Áreas de instabilidade de vertentes (Escarpas e faixas de proteção)"
 ]
-# 🔍 CRITÉRIOS DE COMPATIBILIDADE (ANEXO II - Decl. Retificação 63-B/2008)
-ren_acoes_compativeis = [
-    "✅ Operações de defesa da floresta contra incêndios (isentas em certas condições)",
-    "✅ Infraestruturas de saneamento, abastecimento e energia (sujeitas a autorização)",
-    "✅ Vias de comunicação e transporte (sujeitas a parecer DGArru/APA)",
-    "✅ Aproveitamentos hidráulicos e de recursos geológicos (sujeitos a título)",
-    "✅ Instalações de apoio a atividades agrícolas/florestais (conforme limites Portaria 419/2012)"
+# 🚫 INTERDIÇÕES GERAIS (Artigo 20.º do DL 166/2008)
+ren_interdicoes_gerais = [
+    "🏗️ Operações de loteamento",
+    "🧱 Obras de urbanização, construção e ampliação",
+    "🛣️ Vias de comunicação e acessos",
+    "🚜 Escavações e aterros (alteração da morfologia do solo)",
+    "🪓 Destruição do revestimento vegetal (não agrícola/florestal)",
+    "🌊 Alteração da rede de drenagem natural"
+]
+
+# 📝 REGIMES DE CONTROLO (De acordo com o DL 239/2012)
+ren_regimes_controlo = [
+    "🟢 Isento de procedimento (Uso compatível livre)",
+    "🟡 Comunicação Prévia à CCDR (Regime regra pós-2012)",
+    "🔴 Sujeito a Autorização (Casos específicos/excecionais)",
+    "⭐ Relevante Interesse Público (Despacho Governamental - Art. 21.º)"
 ]
 
 # 🌿 REDE NATURA 2000 - REGIÃO CENTRO (SIC/ZEC e ZPE - Listagem Consolidada ICNF)
@@ -228,18 +237,28 @@ with tabs[0]:
         desc_visual = st.text_area("Notas de Campo")
 
 with tabs[1]:
-    st.info("**Regime Jurídico da REN (DL 166/2008, DL 239/2012 e Portaria 419/2012)**")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("**1. Tipologia de Área Integrada na REN**")
-        sel_ren = [i for i in (ren_litoral + ren_hidro + ren_riscos) if st.checkbox(i, key=f"ren_{i}")]
-    with col2:
-        st.write("**2. Ações e Títulos (Decl. Ret. 63-B/2008)**")
-        sel_comp = [i for i in ren_acoes_compativeis if st.checkbox(i)]
-        st.divider()
-        c_previa = st.checkbox("Falta de Comunicação Prévia (Art. 21.º)")
-        p_apa = st.checkbox("Falta de Parecer/Autorização APA/CCDR (Art. 20.º)")
-        lim_area_ren = st.checkbox("Excede limites de impermeabilização/área (Portaria 419/2012)")
+    st.info("**Regime Jurídico da REN (DL 166/2008 atualizado pelo DL 239/2012)**")
+    
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        st.subheader("1. Tipologias e Interdições")
+        sel_ren = st.multiselect("Áreas Afetadas:", ren_litoral + ren_hidro + ren_riscos)
+        st.write("---")
+        st.write("**Interdições Gerais Observadas:**")
+        sel_inter_ren = [i for i in ren_interdicoes_gerais if st.checkbox(i)]
+        
+    with col_t2:
+        st.subheader("2. Usos e Títulos")
+        sel_regime_ren = st.radio("Enquadramento da Ação:", ren_regimes_controlo)
+        st.write("---")
+        st.write("**Verificação de Conformidade:**")
+        c_previa = st.checkbox("Falta de Comunicação Prévia (Obrigatória pós-2012)")
+        p_apa = st.checkbox("Falta de Parecer/Autorização (APA/CCDR)")
+        lim_area_ren = st.checkbox("Violação de índices (Portaria 419/2012)")
+        interesse_publico = st.checkbox("Ação de Relevante Interesse Público s/ Despacho")
+
+    st.divider()
+    st.caption("Nota: O DL 239/2012 privilegia a Comunicação Prévia para simplificação administrativa.")
 
 with tabs[2]:
     st.success("**Conservação da Natureza (DL 140/99 + DL 142/2008)**")
@@ -371,7 +390,18 @@ with tabs[7]:
                 - Interessado: {inf_nome}, NIF: {inf_nif}.
 
                 ELEMENTOS DE ANÁLISE SELECIONADOS:
-                - REN: {sel_ren}. Ações Anexo II: {sel_comp if 'sel_comp' in locals() else 'Não selecionado'}.
+                # No ENQUADRAMENTO REN do Prompt:
+                - TIPOLOGIAS: {sel_ren}.
+                - INTERDIÇÕES VIOLADAS: {sel_inter_ren}.
+                - REGIME DE CONTROLO APLICÁVEL: {sel_regime_ren}.
+                - INFRAÇÕES: Com. Prévia={c_previa}, Parecer={p_apa}, Limites={lim_area_ren}, Interesse Público={interesse_publico}.
+
+                # Nas INSTRUÇÕES DE FUNDAMENTAÇÃO:
+                - PARA A REN: Analisa se a ação constitui uma violação de Interdição Geral (Art. 20.º) ou apenas falta de título (Comunicação Prévia). 
+                - Cita o DL 239/2012 para explicar a simplificação do regime e a obrigatoriamente de controlo sucessivo.
+                - Se houver 'Destruição de coberto vegetal', verifica a exceção para explorações agrícolas/florestais correntes.
+                - Classifica a gravidade: LEVE (falta de comunicação), GRAVE (falta de autorização), ou MUITO GRAVE (usos interditos ou violação de embargo).
+				- REN: {sel_ren}. Ações Anexo II: {sel_comp if 'sel_comp' in locals() else 'Não selecionado'}.
                 - NATURA 2000 & AP: {sel_zec} / {sel_rnap}. Condicionantes Art. 9º nº 2: {sel_art9}.
                 - RAN: {sel_ran_int} / {sel_ran_cond}. Limites Técnicos: {lim_apoio}/{lim_hab}/{lim_vias}.
                 - PDM (Ordenamento): Classe={sel_pdm}. Conformidade={confo_pdm}. Artigo={artigo_pdm}.
@@ -399,6 +429,7 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
 
 
