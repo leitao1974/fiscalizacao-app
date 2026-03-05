@@ -33,28 +33,34 @@ if api_key:
 
 # --- BASE DE DADOS CONSOLIDADAS ---
 
-# 💧 REN - TIPOLOGIAS REFINADAS (DL 166/2008 + DL 239/2012 + Decl. Ret. 63-B/2008)
-ren_litoral = [
-    "Faixa marítima de proteção", "Praias", "Barreiras detríticas (ilhas-barreira, restingas e tômbolos)", 
-    "Sapais", "Ilhéus e rochedos emersos no mar", "Dunas costeiras e dunas fósseis", 
-    "Arribas e respetivas faixas de proteção", "Faixa terrestre de proteção costeira", 
-    "Águas de transição e respetivas faixas de proteção (leitos e margens)"
-]
+# 💧 REN - TIPOLOGIAS DETALHADAS (DL 239/2012)
+ren_litoral_dict = {
+    "Faixa marítima de proteção costeira": "Linha do leito até batimétrica dos 30m",
+    "Praias": "Acumulação de sedimentos (areia/cascalho)",
+    "Barreiras detríticas": "Restingas, barreiras soldadas e ilhas-barreira",
+    "Tômbolos": "Sedimentos que ligam ilha ao continente",
+    "Sapais": "Zonas intertidais com vegetação halofítica",
+    "Ilhéus e rochedos emersos no mar": "Formações rochosas destacadas",
+    "Dunas costeiras e dunas fósseis": "Acumulações eólicas de areia",
+    "Arribas e faixas de proteção": "Vertentes abruptas e áreas adjacentes",
+    "Faixa terrestre de proteção costeira": "Proteção na ausência de dunas/arribas",
+    "Águas de transição": "Secções terminais sob influência salina"
+}
 
-ren_hidro = [
-    "Cursos de água e respetivos leitos e margens", 
-    "Lagoas e lagos e respetivos leitos, margens e faixas de proteção", 
-    "Albufeiras que contribuam para a conectividade e coerência ecológica (leitos, margens e faixas de proteção)", 
-    "Áreas estratégicas de proteção e recarga de aquíferos (Cabeceiras e áreas de infiltração máxima)"
-]
+ren_hidro_dict = {
+    "Cursos de água, leitos e margens": "Terreno coberto pelas águas e faixas confinantes",
+    "Lagoas e lagos": "Meios hídricos lênticos e faixas de proteção",
+    "Albufeiras": "Volumes retidos por barragens para conectividade ecológica",
+    "Áreas estratégicas de proteção e recarga de aquíferos": "Zonas de infiltração máxima"
+}
 
-ren_riscos = [
-    "Zonas adjacentes (Lei da Titularidade dos Recursos Hídricos)", 
-    "Zonas ameaçadas pelo mar (Zonas de galgamento ou erosão)", 
-    "Zonas ameaçadas pelas cheias (Leitos de cheia)", 
-    "Áreas de elevado risco de erosão hídrica do solo", 
-    "Áreas de instabilidade de vertentes (Escarpas e faixas de proteção)"
-]
+ren_riscos_dict = {
+    "Zonas adjacentes": "Risco de cheia ou ameaça do mar (ato regulamentar)",
+    "Zonas ameaçadas pelo mar": "Inundações por galgamento oceânico",
+    "Zonas ameaçadas pelas cheias": "Suscetíveis a transbordo de cursos de água",
+    "Áreas de elevado risco de erosão hídrica": "Declive e solo propícios a perda de terra",
+    "Áreas de instabilidade de vertentes": "Movimentos de massa/deslizamentos"
+}
 # 🚫 INTERDIÇÕES GERAIS (Artigo 20.º do DL 166/2008)
 ren_interdicoes_gerais = [
     "🏗️ Operações de loteamento",
@@ -241,8 +247,20 @@ with tabs[1]:
     
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        st.subheader("1. Tipologias e Interdições")
-        sel_ren = st.multiselect("Áreas Afetadas:", ren_litoral + ren_hidro + ren_riscos)
+        st.subheader("1. Tipologias da REN")
+        
+        with st.expander("🌊 1. Áreas de Proteção do Litoral"):
+            sel_litoral = st.multiselect("Selecione as subtipologias:", list(ren_litoral_dict.keys()))
+            
+        with st.expander("💧 2. Ciclo Hidrológico Terrestre"):
+            sel_hidro = st.multiselect("Selecione as subtipologias:", list(ren_hidro_dict.keys()))
+            
+        with st.expander("⚠️ 3. Prevenção de Riscos Naturais"):
+            sel_riscos = st.multiselect("Selecione as subtipologias:", list(ren_riscos_dict.keys()))
+            
+        # Unificar as seleções para o prompt
+        sel_ren = sel_litoral + sel_hidro + sel_riscos
+        
         st.write("---")
         st.write("**Interdições Gerais Observadas:**")
         sel_inter_ren = [i for i in ren_interdicoes_gerais if st.checkbox(i)]
@@ -390,11 +408,14 @@ with tabs[7]:
                 - Interessado: {inf_nome}, NIF: {inf_nif}.
 
                 ELEMENTOS DE ANÁLISE SELECIONADOS:
-                # No ENQUADRAMENTO REN do Prompt:
-                - TIPOLOGIAS: {sel_ren}.
-                - INTERDIÇÕES VIOLADAS: {sel_inter_ren}.
-                - REGIME DE CONTROLO APLICÁVEL: {sel_regime_ren}.
-                - INFRAÇÕES: Com. Prévia={c_previa}, Parecer={p_apa}, Limites={lim_area_ren}, Interesse Público={interesse_publico}.
+                # No prompt, dentro de ENQUADRAMENTO REN:
+                - ÁREAS AFETADAS (SUBTIPOLOGIAS): {sel_ren}.
+                - INTERDIÇÕES VIOLADAS (Art. 20º): {sel_inter_ren}.
+                - REGIME DE CONTROLO: {sel_regime_ren}.
+
+                # Nas instruções:
+                - PARA A REN: Utiliza as definições técnicas das áreas selecionadas (ex: se selecionar 'Arribas', menciona a necessidade de garantir estabilidade e segurança). 
+                - Cruza as interdições {sel_inter_ren} com o regime de {sel_regime_ren} para determinar a gravidade da infração.
 
                 # Nas INSTRUÇÕES DE FUNDAMENTAÇÃO:
                 - PARA A REN: Analisa se a ação constitui uma violação de Interdição Geral (Art. 20.º) ou apenas falta de título (Comunicação Prévia). 
@@ -429,6 +450,7 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
 
 
