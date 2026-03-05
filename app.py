@@ -264,7 +264,7 @@ with tabs[1]:
         
         st.write("---")
         st.write("**Interdições Gerais Observadas:**")
-        sel_inter_ren = [i for i in ren_interdicoes_gerais if st.checkbox(i)]
+        sel_inter_ren = [i for i in ren_interdicoes_gerais if st.checkbox(i, key=f'ren_inter_{i}')]
         
     with col_t2:
         st.subheader("2. Regime de Controlo")
@@ -299,7 +299,7 @@ with tabs[3]:
     with col_r1:
         st.subheader("1. Interdições e Uso do Solo")
         st.write("**Interdições Gerais Observadas:**")
-        sel_inter_ran = [i for i in ran_interdicoes_gerais if st.checkbox(i)]
+        sel_inter_ran = [i for i in ran_interdicoes_gerais if st.checkbox(i, key=f'ran_inter_{i}')]
         
         st.divider()
         st.write("**Regime de Controlo Administrativo:**")
@@ -331,11 +331,11 @@ with tabs[4]:
     col1, col2 = st.columns(2)
     with col1:
         st.write("**Interdições e Condicionantes**")
-        sel_pat_int = [i for i in patrimonio_interdicoes if st.checkbox(i)]
-        sel_pat_cond = [i for i in patrimonio_condicionantes if st.checkbox(i)]
+        sel_pat_int = [i for i in patrimonio_interdicoes if st.checkbox(i, key=f'pat_int_{i}')]
+        sel_pat_cond = [i for i in patrimonio_condicionantes if st.checkbox(i, key=f'pat_cond_{i}')]
     with col2:
         st.write("**Deveres do Proprietário e Arqueologia**")
-        sel_pat_dev = [i for i in patrimonio_deveres if st.checkbox(i)]
+        sel_pat_dev = [i for i in patrimonio_deveres if st.checkbox(i, key=f'pat_dev_{i}')]
         obs_pat = st.text_area("Notas Técnicas (Estado de conservação, tipologia do bem, etc.):")
     
     st.divider()
@@ -346,10 +346,10 @@ with tabs[5]:
     col1, col2 = st.columns(2)
     with col1:
         st.write("**Interdições e Utilizações Principais**")
-        sel_rh_int = [i for i in rh_interdicoes if st.checkbox(i)]
+        sel_rh_int = [i for i in rh_interdicoes if st.checkbox(i, key=f'rh_int_{i}')]
     with col2:
         st.write("**Zonas de Proteção e Condicionantes**")
-        sel_rh_cond = [i for i in rh_condicionantes if st.checkbox(i)]
+        sel_rh_cond = [i for i in rh_condicionantes if st.checkbox(i, key=f'rh_cond_{i}')]
         obs_rh = st.text_area("Notas sobre o Meio Hídrico (Caudal, poluição, etc.):")
     st.divider()
     st.warning("ℹ️ Nota: Verifique a servidão de margem (Art. 21.º da Lei da Água).")
@@ -374,7 +374,7 @@ with tabs[6]:
 
 with tabs[7]:
     st.subheader("🛠️ Medidas de Minimização Propostas")
-    sel_medidas = [i for i in medidas_minimizacao if st.checkbox(i)]
+    sel_medidas = [i for i in medidas_minimizacao if st.checkbox(i, key=f'med_{i}')]
     texto_adicional_medidas = st.text_area("Prescrições técnicas específicas:")
     
     st.divider()
@@ -389,7 +389,7 @@ with tabs[7]:
     col_reg1, col_reg2 = st.columns(2)
     with col_reg1:
         if sel_ren: st.warning(f"🔹 **REN:** {matriz_sancionatoria['REN']}")
-        if sel_ran_int or sel_ran_cond: st.warning(f"🔹 **RAN:** {matriz_sancionatoria['RAN']}")
+        if sel_inter_ran: st.warning(f"🔹 **RAN:** {matriz_sancionatoria['RAN']}")
     with col_reg2:
         if sel_zec or sel_art9: st.warning(f"🔹 **Natura 2000:** {matriz_sancionatoria['NATURA 2000']}")
         if sel_rh_int or sel_rh_cond: st.warning(f"🔹 **Água:** {matriz_sancionatoria['AGUA']}")
@@ -481,6 +481,12 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
+
+
+
+
+
 
 
 
