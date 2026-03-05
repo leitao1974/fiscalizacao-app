@@ -355,7 +355,7 @@ with tabs[7]:
         else:
             with st.spinner("A analisar conformidade legal (Anexo II REN, RAN e Água)..."):
                 model = genai.GenerativeModel(modelo_selecionado)
-               prompt = f"""
+                prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Ordenamento do Território. 
                 O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
 
@@ -392,4 +392,5 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
