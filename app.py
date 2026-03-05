@@ -64,13 +64,20 @@ ren_acoes_compativeis = [
     "✅ Instalações de apoio a atividades agrícolas/florestais (conforme limites Portaria 419/2012)"
 ]
 
-# 🌿 REDE NATURA 2000 (Sítios ZEC e ZPE - Listagem Expandida)
+# 🌿 REDE NATURA 2000 - REGIÃO CENTRO (SIC/ZEC e ZPE - Listagem Consolidada ICNF)
 zec_zpe_lista = [
-    "ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Rio Zêzere", "ZEC Albufeira de Castelo do Bode", 
-    "ZEC Sicó/Alvaiázere", "ZEC Serra da Lousã", "ZEC Rio Vouga", "ZEC Rio Paiva", "ZEC Arrábida/Espichel", 
-    "ZEC Estuário do Tejo", "ZEC Monfurado", "ZEC Costa Vicentina", "ZEC Sintra-Cascais", 
-    "ZPE Paul do Boquilobo", "ZPE Estuário do Mondego", "ZPE Lagoa de Albufeira", "ZPE Douro Internacional", 
-    "ZPE Castro Verde", "ZPE Ria de Aveiro", "ZPE Beira Interior"
+    "ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Rio Zêzere", 
+    "ZEC Albufeira de Castelo do Bode", "ZEC Sicó/Alvaiázere", "ZEC Serra da Lousã", 
+    "ZEC Rio Vouga", "ZEC Rio Paiva", "ZEC Arrábida/Espichel", "ZEC Estuário do Tejo", 
+    "ZEC Monfurado", "ZEC Costa Vicentina", "ZEC Sintra-Cascais", "ZEC Montejunto",
+    "ZEC Peniche", "ZEC Berlengas", "ZEC Dunas de Mira, Gândara e Gafanhas", 
+    "ZEC Serras de Socorro e Archeira", "ZEC Arquipélago das Berlengas (Marinha)",
+    "ZEC São Pedro de Moel", "ZEC Complexo do Alviela", "ZEC Ribeira de Alge",
+    "ZPE Paul do Boquilobo", "ZPE Estuário do Mondego", "ZPE Lagoa de Albufeira", 
+    "ZPE Douro Internacional", "ZPE Castro Verde", "ZPE Ria de Aveiro", 
+    "ZPE Beira Interior (Tejo Internacional e Erges)", "ZPE Serra da Gardunha",
+    "ZPE Serra da Lousã", "ZPE Paul de Arzila", "ZPE Paul do Taipal",
+    "ZPE Serra da Estrela (Cumes e Planalto Superior)", "ZPE Arquipélago das Berlengas"
 ]
 
 # 🌿 CONDICIONANTES ART. 9.º N.º 2 (DL 140/99 - Texto Integral)
@@ -392,5 +399,6 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
 
