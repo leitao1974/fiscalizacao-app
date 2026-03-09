@@ -10,6 +10,10 @@ from pypdf import PdfReader
 # 1. Configuração de Interface
 st.set_page_config(page_title="Fiscalização Pro: Matriz Legal Total", layout="wide", page_icon="🛡️")
 
+# No topo do script, após as importações
+if 'desc_detalhada' not in st.session_state:
+    desc_detalhada = ""
+
 st.markdown("""
     <style>
     .stCheckbox { margin-bottom: -15px; font-size: 13px; }
@@ -271,7 +275,8 @@ with tabs[0]:
         inf_nif = st.text_input("NIF/NIPC")
         inf_tel = st.text_input("Telefone")
         tipo_ent = st.radio("Tipo", ["Pessoa Singular", "Pessoa Coletiva"], horizontal=True)
-        desc_visual = st.text_area("Notas de Campo")
+        # CORREÇÃO: Variável renomeada para desc_detalhada para evitar o NameError
+        desc_detalhada = st.text_area("📝 Descrição Detalhada dos Factos", placeholder="Descreva o que observou no terreno...")
 
 with tabs[1]:
     # Interruptor mestre para REN
@@ -472,6 +477,7 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
 
 
