@@ -404,16 +404,25 @@ with tabs[7]:
         buf.seek(0)
         return buf
 
-    if st.button("🚀 Gerar Informação Técnica Fundamentada"):
+   if st.button("🚀 Gerar Informação Técnica Fundamentada"):
         if not api_key:
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A analisar conformidade legal..."):
-                from textwrap import dedent
+            with st.spinner("A analisar conformidade legal (REN, RAN, Natura 2000)..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
-                # O uso de dedent(f""" ... """) remove a indentação à esquerda automaticamente
-                prompt = dedent(f"""
+                # Construção do contexto condicional para o prompt
+                contexto_natura = ""
+                if incide_natura:
+                    contexto_natura = f"""
+                    REDE NATURA 2000 / ÁREAS PROTEGIDAS:
+                    - Sítios ZEC/ZPE: {sel_zec}
+                    - Áreas Protegidas (RNAP): {sel_rnap}
+                    - Condicionantes Art. 9.º n.º 2 (DL 140/99): {sel_art9}
+                    - Zonamento: {sel_zon}
+                    """
+
+                prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Ordenamento do Território.
                 O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
 
@@ -421,24 +430,28 @@ with tabs[7]:
                 - Localidade: {local}, Coordenadas: {lat}/{lon}. Área afetada: {area_m2}m2.
                 - Interessado: {inf_nome}, NIF: {inf_nif}.
 
-                ELEMENTOS DE ANÁLISE SELECIONADOS:
-                - REN: {sel_ren}.
-                - PDM (Ordenamento): Classe={sel_pdm}. Conformidade={confo_pdm}. Artigo={artigo_pdm}.
+                DESCRIÇÃO DOS FACTOS (BASE PARA O RELATÓRIO):
+                {desc_detalhada}
+
+                ELEMENTOS DE ANÁLISE LEGAL:
+                - REN: {sel_ren if incide_ren else 'N/A'}.
+                - RAN: {sel_inter_ran if incide_ran else 'N/A'}.
+                {contexto_natura}
+                - PDM: Classe={sel_pdm}. Conformidade={confo_pdm}. Artigo={artigo_pdm}.
                 - ANÁLISE TÉCNICA PDM: {desc_pdm}
-                - DESCRIÇÃO DOS FACTOS (GERAL): {desc_detalhada}.
-                - MEDIDAS DE REPOSIÇÃO: {sel_medidas}.
 
                 ESTRUTURA OBRIGATÓRIA:
                 1. OBJETIVO: Análise da conformidade legal.
                 2. DESCRIÇÃO DOS FACTOS: Relatar tecnicamente as ações observadas.
                 3. FUNDAMENTAÇÃO JURÍDICA:
-                   - PARA A REN: Citar Declaração de Retificação n.º 63-B/2008 (Anexo II) e Art. 20.º do DL 166/2008.
-                   - PARA O PDM: Integrar a análise técnica ({desc_pdm}) e citar o Artigo {artigo_pdm} do Regulamento.
+                   - PARA A REN: Citar Declaração de Retificação n.º 63-B/2008 e DL 166/2008.
+                   - PARA REDE NATURA 2000: Se aplicável, citar obrigatoriamente o Decreto-Lei n.º 140/99 e as condicionantes do Artigo 9.º n.º 2.
+                   - PARA O PDM: Integrar a análise técnica ({desc_pdm}).
                 4. CONCLUSÃO E PARECER: Juízo técnico sobre a legalidade.
                 5. PRESCRIÇÕES TÉCNICAS: Listar as medidas {sel_medidas}.
 
                 ESTILO: Formal, PT-PT, capítulos a BOLD. SEM proposta de coimas.
-                """)
+                """
                 
                 try:
                     res = model.generate_content(prompt).text
@@ -446,11 +459,4 @@ with tabs[7]:
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                     st.write(res)
                 except Exception as e:
-                    st.error(f"Erro: {e}")
-
-
-
-
-
-
-
+                    st.error(f"Erro na geração: {e}")
