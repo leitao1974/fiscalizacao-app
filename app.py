@@ -244,87 +244,72 @@ with tabs[0]:
         desc_visual = st.text_area("Notas de Campo")
 
 with tabs[1]:
-    st.info("**Regime Jurídico da REN (DL 166/2008 atualizado pelo DL 239/2012)**")
+    # Interruptor mestre para REN
+    incide_ren = st.toggle("🚨 A infração localiza-se em área de REN?", key="switch_ren")
     
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-        st.subheader("1. Tipologias da REN")
-        
-        with st.expander("🌊 1. Áreas de Proteção do Litoral"):
-            sel_litoral = st.multiselect("Selecione as subtipologias:", list(ren_litoral_dict.keys()))
+    if incide_ren:
+        st.info("**Regime Jurídico da REN (DL 166/2008 atualizado pelo DL 239/2012)**")
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            st.subheader("1. Tipologias da REN")
+            with st.expander("🌊 Áreas de Proteção do Litoral"):
+                sel_litoral = st.multiselect("Subtipologias:", list(ren_litoral_dict.keys()), key="ren_litoral")
+            with st.expander("💧 Ciclo Hidrológico Terrestre"):
+                sel_hidro = st.multiselect("Subtipologias:", list(ren_hidro_dict.keys()), key="ren_hidro")
+            with st.expander("⚠️ Prevenção de Riscos Naturais"):
+                sel_riscos = st.multiselect("Subtipologias:", list(ren_riscos_dict.keys()), key="ren_riscos")
             
-        with st.expander("💧 2. Ciclo Hidrológico Terrestre"):
-            sel_hidro = st.multiselect("Selecione as subtipologias:", list(ren_hidro_dict.keys()))
-            
-        with st.expander("⚠️ 3. Prevenção de Riscos Naturais"):
-            sel_riscos = st.multiselect("Selecione as subtipologias:", list(ren_riscos_dict.keys()))
-            
-        # Unificar as seleções para o prompt
-        sel_ren = sel_litoral + sel_hidro + sel_riscos
-        
-        st.write("---")
-        st.write("**Interdições Gerais Observadas:**")
-        sel_inter_ren = [i for i in ren_interdicoes_gerais if st.checkbox(i, key=f'ren_inter_{i}')]
-        
-    with col_t2:
-        st.subheader("2. Regime de Controlo")
-        sel_regime_ren = st.radio("Enquadramento da Ação:", ren_regimes_controlo)
-        st.write("---")
-        st.write("**Verificação de Conformidade:**")
-        c_previa = st.checkbox("Falta de Comunicação Prévia (Obrigatória pós-2012)")
-        p_apa = st.checkbox("Falta de Parecer/Autorização (APA/CCDR)")
-        lim_area_ren = st.checkbox("Violação de índices (Portaria 419/2012)")
-        interesse_publico = st.checkbox("Ação de Relevante Interesse Público s/ Despacho")
-
-    st.divider()
-    st.caption("Nota: O DL 239/2012 privilegia a Comunicação Prévia para simplificação administrativa.")
+            sel_ren = sel_litoral + sel_hidro + sel_riscos
+            st.write("**Interdições Gerais Observadas:**")
+            sel_inter_ren = [i for i in ren_interdicoes_gerais if st.checkbox(i, key=f"int_ren_{i}")]
+        with col_t2:
+            st.subheader("2. Regime de Controlo")
+            sel_regime_ren = st.radio("Enquadramento da Ação:", ren_regimes_controlo)
+            c_previa_ren = st.checkbox("Falta de Comunicação Prévia", key="cp_ren")
+            p_apa_ren = st.checkbox("Falta de Parecer/Autorização", key="p_ren")
+            lim_area_ren = st.checkbox("Violação de índices (Portaria 419/2012)", key="lim_ren")
+    else:
+        st.warning("Área de REN não selecionada. Esta secção será omitida do relatório.")
+        sel_ren, sel_inter_ren, sel_regime_ren = [], [], "N/A"
+        c_previa_ren, p_apa_ren, lim_area_ren = False, False, False
 
 with tabs[2]:
-    st.success("**Conservação da Natureza (DL 140/99 + DL 142/2008)**")
-    col1, col2 = st.columns(2)
-    with col1:
-        sel_zec = st.multiselect("Sítios ZEC/ZPE (Rede Natura 2000):", zec_zpe_lista)
-        sel_rnap = st.multiselect("Áreas Protegidas (RNAP):", rnap_lista)
-        st.write("**Condicionantes Art. 9.º n.º 2:**")
-        sel_art9 = [i for i in condicionantes_art9 if st.checkbox(i, key=f"art9_{i}")]
-    with col2:
-        st.write("**Zonamento (POAP / PNA):**")
-        sel_zon = st.multiselect("Selecione o Zonamento afetado:", zonamento_tipologias)
-        upload_poap = st.file_uploader("📂 Upload Regulamento POAP (PDF)", type=['pdf'])
+    incide_natura = st.toggle("🌿 A infração localiza-se em Rede Natura 2000 / AP?", key="switch_natura")
+    
+    if incide_natura:
+        st.success("**Conservação da Natureza (DL 140/99 + DL 142/2008)**")
+        col1, col2 = st.columns(2)
+        with col1:
+            sel_zec = st.multiselect("Sítios ZEC/ZPE (Rede Natura 2000):", zec_zpe_lista)
+            sel_rnap = st.multiselect("Áreas Protegidas (RNAP):", rnap_lista)
+            st.write("**Condicionantes Art. 9.º n.º 2:**")
+            sel_art9 = [i for i in condicionantes_art9 if st.checkbox(i, key=f"art9_{i}")]
+        with col2:
+            st.write("**Zonamento (POAP / PNA):**")
+            sel_zon = st.multiselect("Selecione o Zonamento afetado:", zonamento_tipologias)
+    else:
+        st.warning("Área Natura 2000 não selecionada.")
+        sel_zec, sel_rnap, sel_art9, sel_zon = [], [], [], []
 
 with tabs[3]:
-    st.info("**Reserva Agrícola Nacional (DL 73/2009 atualizado pelo DL 199/2015)**")
+    incide_ran = st.toggle("🌾 A infração localiza-se em área de RAN?", key="switch_ran")
     
-    col_r1, col_r2 = st.columns(2)
-    with col_r1:
-        st.subheader("1. Interdições e Uso do Solo")
-        st.write("**Interdições Gerais Observadas:**")
-        sel_inter_ran = [i for i in ran_interdicoes_gerais if st.checkbox(i, key=f'ran_inter_{i}')]
-        
-        st.divider()
-        st.write("**Regime de Controlo Administrativo:**")
-        regime_ran = st.radio("Procedimento:", 
-            ["Isenção (Reduzido impacto)", "Comunicação Prévia (Prazo 22 dias)", "Relevante Interesse Público (Despacho)"], 
-            key="reg_ran")
-
-    with col_t2: # Coluna Direita
-        st.subheader("2. Verificação de Limites (Portaria 162/2011)")
-        st.write("A pretensão excede os limites máximos?")
-        
-        # Checkboxes baseadas nos limites da Portaria
-        lim_hab = st.checkbox("Habitação: Excede ATI de 500 m²")
-        lim_turismo = st.checkbox("Turismo: Excede 20% da área ou 5.000 m²")
-        lim_agroind = st.checkbox("Agro-indústria: Excede 10% ou 2.000 m²")
-        lim_apoio = st.checkbox("Apoio Agrícola: Área > 40 m²")
-        
-        st.divider()
-        st.write("**Critérios de Rejeição:**")
-        falta_alternativa = st.checkbox("Existe alternativa viável fora da RAN")
-        impacto_biofisico = st.checkbox("Afeta o equilíbrio do sistema biofísico")
-        parecer_apa_neg = st.checkbox("Parecer desfavorável da APA (se aplicável)")
-
-    st.divider()
-    st.caption("Nota: A CCDR Centro tem 22 dias para rejeitar a Comunicação Prévia; a ausência de resposta nesse prazo viabiliza a pretensão.")
+    if incide_ran:
+        st.info("**Reserva Agrícola Nacional (DL 73/2009 atualizado pelo DL 199/2015)**")
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            st.subheader("1. Interdições")
+            sel_inter_ran = [i for i in ran_interdicoes_gerais if st.checkbox(i, key=f'ran_inter_{i}')]
+            regime_ran = st.radio("Procedimento:", ["Isenção", "Comunicação Prévia", "Interesse Público"], key="reg_ran")
+        with col_r2:
+            st.subheader("2. Verificação de Limites")
+            lim_hab = st.checkbox("Habitação: Excede ATI de 500 m²")
+            lim_apoio = st.checkbox("Apoio Agrícola: Área > 40 m²")
+            falta_alternativa = st.checkbox("Existe alternativa viável fora da RAN")
+    else:
+        st.warning("Área de RAN não selecionada.")
+        sel_inter_ran, regime_ran = [], "N/A"
+        lim_hab, lim_apoio, falta_alternativa = False, False, False
 
 with tabs[4]:
     st.warning("**Património Cultural (Lei 107/2001 - Bases da Política e do Regime de Proteção)**")
@@ -422,7 +407,22 @@ with tabs[7]:
                 model = genai.GenerativeModel(modelo_selecionado)
                 prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Ordenamento do Território. 
-                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
+                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA.
+
+                ENQUADRAMENTO LEGAL ATIVADO:
+                - ÁREA REN: {'SIM' if incide_ren else 'NÃO'}
+                - ÁREA RAN: {'SIM' if incide_ran else 'NÃO'}
+                - REDE NATURA 2000: {'SIM' if incide_natura else 'NÃO'}
+
+                {f"DADOS REN: Tipologias {sel_ren}, Interdições {sel_inter_ren}, Regime {sel_regime_ren}." if incide_ren else "A área NÃO está em REN."}
+                {f"DADOS RAN: Interdições {sel_inter_ran}, Regime {regime_ran}, Limites excedidos: Habitação={lim_hab}, Apoio={lim_apoio}." if incide_ran else "A área NÃO está em RAN."}
+                {f"DADOS NATURA: Sítios {sel_zec}, RNAP {sel_rnap}, Condicionantes {sel_art9}." if incide_natura else "A área NÃO está em Rede Natura 2000."}
+
+                INSTRUÇÕES DE FUNDAMENTAÇÃO:
+                - Só deves fundamentar juridicamente os regimes assinalados como 'SIM'. 
+                - Se um regime for 'NÃO', deves declarar explicitamente no capítulo respetivo que 'o local não se encontra abrangido por esta servidão/restrição à data da fiscalização'.
+                - Para os regimes 'SIM', utiliza o rigor técnico habitual (DL 166/2008, DL 73/2009, etc.).
+                """
 
                 DADOS DO LOCAL E INTERESSADO:
                 - Localidade: {local}, Coordenadas: {lat}/{lon}. Área afetada: {area_m2}m2.
@@ -481,6 +481,7 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
 
 
