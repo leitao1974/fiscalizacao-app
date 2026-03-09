@@ -79,20 +79,50 @@ ren_regimes_controlo = [
     "⭐ Relevante Interesse Público (Despacho Governamental - Art. 21.º)"
 ]
 
-# 🌿 REDE NATURA 2000 - REGIÃO CENTRO (SIC/ZEC e ZPE - Listagem Consolidada ICNF)
+# 🌿 REDE NATURA 2000 - REGIÃO CENTRO (ZEC e ZPE - Listagem Atualizada)
 zec_zpe_lista = [
-    "ZEC Serra de Aire e Candeeiros", "ZEC Serra da Estrela", "ZEC Rio Zêzere", 
-    "ZEC Albufeira de Castelo do Bode", "ZEC Sicó/Alvaiázere", "ZEC Serra da Lousã", 
-    "ZEC Rio Vouga", "ZEC Rio Paiva", "ZEC Arrábida/Espichel", "ZEC Estuário do Tejo", 
-    "ZEC Monfurado", "ZEC Costa Vicentina", "ZEC Sintra-Cascais", "ZEC Montejunto",
-    "ZEC Peniche", "ZEC Berlengas", "ZEC Dunas de Mira, Gândara e Gafanhas", 
-    "ZEC Serras de Socorro e Archeira", "ZEC Arquipélago das Berlengas (Marinha)",
-    "ZEC São Pedro de Moel", "ZEC Complexo do Alviela", "ZEC Ribeira de Alge",
-    "ZPE Paul do Boquilobo", "ZPE Estuário do Mondego", "ZPE Lagoa de Albufeira", 
-    "ZPE Douro Internacional", "ZPE Castro Verde", "ZPE Ria de Aveiro", 
-    "ZPE Beira Interior (Tejo Internacional e Erges)", "ZPE Serra da Gardunha",
-    "ZPE Serra da Lousã", "ZPE Paul de Arzila", "ZPE Paul do Taipal",
-    "ZPE Serra da Estrela (Cumes e Planalto Superior)", "ZPE Arquipélago das Berlengas"
+    # --- Zonas Especiais de Conservação (ZEC) ---
+    "ZEC Serra da Malcata", 
+    "ZEC Serra da Estrela", 
+    "ZEC Serra de Aire e Candeeiros", 
+    "ZEC Sicó/Alvaiázere", 
+    "ZEC Serra da Lousã", 
+    "ZEC Serra do Açor", 
+    "ZEC Gardunha", 
+    "ZEC Rio Zêzere", 
+    "ZEC Rio Paiva", 
+    "ZEC Rio Vouga", 
+    "ZEC Estuário do Mondego", 
+    "ZEC Estuário do Tejo",
+    "ZEC Paul de Arzila", 
+    "ZEC Paul do Boquilobo", 
+    "ZEC Dunas de Mira, Gândara e Gafanhas", 
+    "ZEC São Pedro de Moel", 
+    "ZEC Peniche", 
+    "ZEC Berlengas", 
+    "ZEC Montejunto", 
+    "ZEC Sintra-Cascais", 
+    "ZEC Arrábida/Espichel",
+    "ZEC Complexo do Alviela", 
+    "ZEC Ribeira de Alge",
+    "ZEC Cabeço das Videiras",
+    "ZEC Nisa/Nelas",
+    "ZEC Arquipélago das Berlengas (Marinha)",
+
+    # --- Zonas de Proteção Especial (ZPE) ---
+    "ZPE Serra da Malcata", 
+    "ZPE Serra da Estrela", 
+    "ZPE Serra da Gardunha", 
+    "ZPE Beira Interior (Tejo Internacional e Erges)", 
+    "ZPE Serra da Lousã", 
+    "ZPE Paul de Arzila", 
+    "ZPE Paul do Taipal", 
+    "ZPE Paul do Boquilobo", 
+    "ZPE Estuário do Mondego", 
+    "ZPE Ria de Aveiro", 
+    "ZPE Estuário do Tejo",
+    "ZPE Arquipélago das Berlengas", 
+    "ZPE Cabo Espichel"
 ]
 
 # 🌿 CONDICIONANTES ART. 9.º N.º 2 (DL 140/99 - Texto Integral)
@@ -442,6 +472,7 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
+
 
 
 
