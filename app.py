@@ -403,94 +403,45 @@ with tabs[7]:
         if not api_key:
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A analisar conformidade legal (Anexo II REN, RAN e Água)..."):
+            with st.spinner("A analisar conformidade legal..."):
+                from textwrap import dedent
                 model = genai.GenerativeModel(modelo_selecionado)
-                prompt = f"""
-                Age como Perito Técnico Sénior e Jurista especializado em Ordenamento do Território. 
-                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA.
-
-                ENQUADRAMENTO LEGAL ATIVADO:
-                - ÁREA REN: {'SIM' if incide_ren else 'NÃO'}
-                - ÁREA RAN: {'SIM' if incide_ran else 'NÃO'}
-                - REDE NATURA 2000: {'SIM' if incide_natura else 'NÃO'}
-
-                {f"DADOS REN: Tipologias {sel_ren}, Interdições {sel_inter_ren}, Regime {sel_regime_ren}." if incide_ren else "A área NÃO está em REN."}
-                {f"DADOS RAN: Interdições {sel_inter_ran}, Regime {regime_ran}, Limites excedidos: Habitação={lim_hab}, Apoio={lim_apoio}." if incide_ran else "A área NÃO está em RAN."}
-                {f"DADOS NATURA: Sítios {sel_zec}, RNAP {sel_rnap}, Condicionantes {sel_art9}." if incide_natura else "A área NÃO está em Rede Natura 2000."}
-
-                INSTRUÇÕES DE FUNDAMENTAÇÃO:
-                - Só deves fundamentar juridicamente os regimes assinalados como 'SIM'. 
-                - Se um regime for 'NÃO', deves declarar explicitamente no capítulo respetivo que 'o local não se encontra abrangido por esta servidão/restrição à data da fiscalização'.
-                - Para os regimes 'SIM', utiliza o rigor técnico habitual (DL 166/2008, DL 73/2009, etc.).
-                """
+                
+                # O uso de dedent(f""" ... """) remove a indentação à esquerda automaticamente
+                prompt = dedent(f"""
+                Age como Perito Técnico Sénior e Jurista especializado em Ordenamento do Território.
+                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
 
                 DADOS DO LOCAL E INTERESSADO:
                 - Localidade: {local}, Coordenadas: {lat}/{lon}. Área afetada: {area_m2}m2.
                 - Interessado: {inf_nome}, NIF: {inf_nif}.
 
                 ELEMENTOS DE ANÁLISE SELECIONADOS:
-                # No prompt, dentro de ENQUADRAMENTO REN:
-                - ÁREAS AFETADAS (SUBTIPOLOGIAS): {sel_ren}.
-                - INTERDIÇÕES VIOLADAS (Art. 20º): {sel_inter_ren}.
-                - REGIME DE CONTROLO: {sel_regime_ren}.
-
-                # Nas instruções:
-                - PARA A REN: Utiliza as definições técnicas das áreas selecionadas (ex: se selecionar 'Arribas', menciona a necessidade de garantir estabilidade e segurança). 
-                - Cruza as interdições {sel_inter_ren} com o regime de {sel_regime_ren} para determinar a gravidade da infração.
-
-                # Nas INSTRUÇÕES DE FUNDAMENTAÇÃO:
-                - PARA A REN: Analisa se a ação constitui uma violação de Interdição Geral (Art. 20.º) ou apenas falta de título (Comunicação Prévia). 
-                - Cita o DL 239/2012 para explicar a simplificação do regime e a obrigatoriamente de controlo sucessivo.
-                - Se houver 'Destruição de coberto vegetal', verifica a exceção para explorações agrícolas/florestais correntes.
-                - Classifica a gravidade: LEVE (falta de comunicação), GRAVE (falta de autorização), ou MUITO GRAVE (usos interditos ou violação de embargo).
-				- REN: {sel_ren}. Ações Anexo II: {sel_comp if 'sel_comp' in locals() else 'Não selecionado'}.
-                - NATURA 2000 & AP: {sel_zec} / {sel_rnap}. Condicionantes Art. 9º nº 2: {sel_art9}.
-                # No ENQUADRAMENTO RAN do Prompt:
-                - INTERDIÇÕES RAN: {sel_inter_ran}.
-                - REGIME ESCOLHIDO: {regime_ran}.
-                - VIOLAÇÃO DE LIMITES (Portaria 162/2011): Habitação={lim_hab}, Turismo={lim_turismo}, Agroindústria={lim_agroind}, Apoio={lim_apoio}.
-                - FATORES DE REJEIÇÃO: Falta Alternativa={falta_alternativa}, Impacto Biofísico={impacto_biofisico}, Parecer APA={parecer_apa_neg}.
-
-                # Nas INSTRUÇÕES DE FUNDAMENTAÇÃO:
-                - PARA A RAN: Se houver violação de limites ({lim_hab}, {lim_turismo}, etc.), fundamenta com base na Portaria n.º 162/2011.
-                - Menciona a obrigação de preservação da aptidão produtiva do solo conforme o DL 199/2015.
-                - Analisa a questão da 'Inexistência de alternativa viável' como critério cumulativo para qualquer uso não agrícola.
-                - Refere o prazo de 22 dias de oposição sucessiva da CCDR Centro no regime de Comunicação Prévia.
+                - REN: {sel_ren}.
                 - PDM (Ordenamento): Classe={sel_pdm}. Conformidade={confo_pdm}. Artigo={artigo_pdm}.
                 - ANÁLISE TÉCNICA PDM: {desc_pdm}
-                - RECURSOS HÍDRICOS: {sel_rh_int}/{sel_rh_cond}.
-                - MEDIDAS DE REPOSIÇÃO: {sel_medidas}. Notas: {texto_adicional_medidas}.
+                - DESCRIÇÃO DOS FACTOS (GERAL): {desc_detalhada}.
+                - MEDIDAS DE REPOSIÇÃO: {sel_medidas}.
 
                 ESTRUTURA OBRIGATÓRIA:
-                1. OBJETIVO: Análise da conformidade legal face aos regimes de utilidade pública e planos territoriais.
+                1. OBJETIVO: Análise da conformidade legal.
                 2. DESCRIÇÃO DOS FACTOS: Relatar tecnicamente as ações observadas.
                 3. FUNDAMENTAÇÃO JURÍDICA:
                    - PARA A REN: Citar Declaração de Retificação n.º 63-B/2008 (Anexo II) e Art. 20.º do DL 166/2008.
-                   - PARA O PDM: Integrar a análise ({desc_pdm}) e citar o Artigo {artigo_pdm} do Regulamento Municipal.
-                   - PARA REDE NATURA 2000: Transcrever alíneas do Art. 9.º n.º 2 do DL 140/99.
-                   - PARA A RAN: Fundamentar com o Art. 22.º do DL 73/2009.
-                4. CONCLUSÃO E PARECER TÉCNICO: Juízo sobre legalidade e possibilidade de reposição.
+                   - PARA O PDM: Integrar a análise técnica ({desc_pdm}) e citar o Artigo {artigo_pdm} do Regulamento.
+                4. CONCLUSÃO E PARECER: Juízo técnico sobre a legalidade.
                 5. PRESCRIÇÕES TÉCNICAS: Listar as medidas {sel_medidas}.
 
-                ESTILO: Altamente formal, PT-PT, capítulos a BOLD. SEM proposta de coimas.
-                """
+                ESTILO: Formal, PT-PT, capítulos a BOLD. SEM proposta de coimas.
+                """)
+                
                 try:
                     res = model.generate_content(prompt).text
                     st.success("Documentação preparada!")
-                    st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"Fiscalizacao_{local}.docx")
+                    st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro: {e}")
-
-
-
-
-
-
-
-
-
-
 
 
 
