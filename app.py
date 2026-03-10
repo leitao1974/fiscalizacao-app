@@ -404,7 +404,7 @@ with tabs[7]:
         buf.seek(0)
         return buf
 
-   if st.button("🚀 Gerar Informação Técnica Fundamentada"):
+    if st.button("🚀 Gerar Informação Técnica Fundamentada"):
         if not api_key:
             st.error("Falta a API Key.")
         else:
@@ -460,3 +460,4 @@ with tabs[7]:
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro na geração: {e}")
+
