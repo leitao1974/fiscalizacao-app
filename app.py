@@ -500,36 +500,34 @@ with tabs[7]:
                 - REN: {sel_ren if incide_ren else 'N/A'}.
                 {contexto_ran}
                 {contexto_natura}
-                - PATRIMÓNIO: {sel_pat_int + sel_pat_cond if 'sel_pat_int' in locals() else 'N/A'}.
-                - RECURSOS HÍDRICOS: {sel_rh_int + sel_rh_cond if 'sel_rh_int' in locals() else 'N/A'}.
+                - PATRIMÓNIO: {sel_pat_int + sel_pat_cond if incide_patrimonio else 'N/A'}.
+                - RECURSOS HÍDRICOS: {sel_rh_int + sel_rh_cond if incide_rh else 'N/A'}.
                 - PDM: Classe={sel_pdm}. Conformidade={confo_pdm}. Análise Técnica={desc_pdm}.
 
                 VALORES DE COIMAS PARA ENQUADRAMENTO (USAR COMO REFERÊNCIA):
-                - RAN: Art. 39.º DL 73/2009 (1.000€ a 3.500€ Singular | 1.000€ a 35.000€ Coletiva).
-                - REN/AGUA/NATURA: Lei n.º 50/2006 (Até 37.500€ Singular | Até 2.500.000€ Coletiva).
-                - PATRIMÓNIO: Lei n.º 107/2001 (149€ a 3.740€ Singular | 1.496€ a 44.891€ Coletiva).
-                - PDM: RJIGT e RJUE (500€ a 200.000€ Singular | 1.500€ a 450.000€ Coletiva).
+                {matriz_sancionatoria}
 
                 ESTRUTURA OBRIGATÓRIA:
                 1. **OBJETIVO**: Análise da conformidade legal e regimes de servidão administrativa/restrições de utilidade pública.
-                2. **DESCRIÇÃO TÉCNICA**: Relatar pormenorizadamente as ações observadas.
+                2. **DESCRIÇÃO TÉCNICA**: Relatar pormenorizadamente as ações observadas no terreno (construções, escavações, depósitos, etc).
                 3. **FUNDAMENTAÇÃO JURÍDICA**:
-                   - **PARA A RAN**: Transcrever as alíneas do Art. 21.º ou 22.º violadas. Confrontar com os limites da Portaria 162/2011.
-                   - **PARA A REN**: Citar interdições do DL 166/2008.
-                   - **PARA O PATRIMÓNIO**: Citar a Lei 107/2001 e a falta de parecer da tutela, se aplicável.
-                   - **PARA RECURSOS HÍDRICOS**: Citar a Lei 58/2005 (Lei da Água).
-                   - **PARA O PDM**: Integrar a análise de desconformidade urbanística ({desc_pdm}).
+                   - **PARA A RAN**: Transcrever obrigatoriamente as alíneas selecionadas do Artigo 21.º (interdições) ou Artigo 22.º (usos permitidos). Confrontar a ação com os limites técnicos da Portaria n.º 162/2011.
+                   - **PARA A REN**: Citar as interdições do DL n.º 166/2008 (alterado pelo DL n.º 239/2012).
+                   - **PARA REDE NATURA 2000**: Citar a violação das condicionantes do Artigo 9.º n.º 2 do DL n.º 140/99.
+                   - **PARA O PATRIMÓNIO**: Citar a Lei n.º 107/2001 e a falta de parecer prévio da tutela, se aplicável.
+                   - **PARA RECURSOS HÍDRICOS**: Citar a Lei n.º 58/2005 (Lei da Água).
+                   - **PARA O PDM**: Integrar a análise de desconformidade urbanística com o regulamento municipal.
                 4. **QUADRO SANCIONATÓRIO E NULIDADES**:
-                   - Mencionar a NULIDADE de licenciamentos que violem a RAN (Art. 38.º do DL 73/2009) ou o Património (Art. 5.º Lei 107/2001). 
-                   - Apresentar a moldura das coimas em abstrato para o infrator ({tipo_ent}), citando os valores mínimos e máximos.
-                5. **PARECER FINAL E MEDIDAS DE REPOSIÇÃO**: Propor medidas imediatas ({sel_medidas}) e a reposição da legalidade (Art. 44.º do RJran). [cite: 410, 411, 795, 796, 797, 1221, 1222, 1223]
+                   - Mencionar a NULIDADE de licenciamentos administrativos que violem a RAN (Artigo 38.º do DL n.º 73/2009) ou o Património (Artigo 5.º da Lei n.º 107/2001).
+                   - Apresentar a moldura das coimas em abstrato para o infrator ({tipo_ent}), citando os valores mínimos e máximos da matriz legal.
+                5. **PARECER FINAL E MEDIDAS DE REPOSIÇÃO**: Propor medidas imediatas ({sel_medidas}), a cessação de ações (Artigo 43.º) e a reposição da legalidade/situação anterior (Artigo 44.º do RJran).
 
-                ESTILO: Jurídico, formal, Português de Portugal (PT-PT).
+                ESTILO: Jurídico, formal, Português de Portugal (PT-PT). Capítulos a BOLD.
                 """
                 
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Informação Técnica Fundamentada preparada!")
+                    st.success("Informação Técnica Fundamentada gerada!")
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                     st.write(res)
                 except Exception as e:
