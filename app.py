@@ -366,50 +366,51 @@ with tabs[3]:
         st.warning("Área de RAN não selecionada.")
         sel_inter_ran, sel_util_ran = [], []
 with tabs[4]:
-    st.warning("**Património Cultural (Lei 107/2001 - Bases da Política e do Regime de Proteção)**")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("**Interdições e Condicionantes**")
-        sel_pat_int = [i for i in patrimonio_interdicoes if st.checkbox(i, key=f'pat_int_{i}')]
-        sel_pat_cond = [i for i in patrimonio_condicionantes if st.checkbox(i, key=f'pat_cond_{i}')]
-    with col2:
-        st.write("**Deveres do Proprietário e Arqueologia**")
-        sel_pat_dev = [i for i in patrimonio_deveres if st.checkbox(i, key=f'pat_dev_{i}')]
-        obs_pat = st.text_area("Notas Técnicas (Estado de conservação, tipologia do bem, etc.):")
-    
-    st.divider()
-    st.info("ℹ️ **Nota Jurídica:** Licenças municipais que infrinjam estas normas são nulas (Art. 4.º e 5.º da Lei 107/2001).")
-	
+    incide_patrimonio = st.toggle("🏛️ A infração afeta Património Cultural?", key="switch_pat")
+    if incide_patrimonio:
+        st.warning("**Património Cultural (Lei 107/2001)**")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Interdições e Condicionantes**")
+            sel_pat_int = [i for i in patrimonio_interdicoes if st.checkbox(i, key=f'pat_int_{i}')]
+            sel_pat_cond = [i for i in patrimonio_condicionantes if st.checkbox(i, key=f'pat_cond_{i}')]
+        with col2:
+            st.write("**Deveres e Notas**")
+            sel_pat_dev = [i for i in patrimonio_deveres if st.checkbox(i, key=f'pat_dev_{i}')]
+            obs_pat = st.text_area("Observações sobre o Bem Classificado:")
+    else:
+        st.info("Regime de Património Cultural desativado.")
+        sel_pat_int, sel_pat_cond, sel_pat_dev = [], [], []
+
 with tabs[5]:
-    st.info("**Recursos Hídricos (Lei da Água - Lei n.º 58/2005)**")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("**Interdições e Utilizações Principais**")
-        sel_rh_int = [i for i in rh_interdicoes if st.checkbox(i, key=f'rh_int_{i}')]
-    with col2:
-        st.write("**Zonas de Proteção e Condicionantes**")
-        sel_rh_cond = [i for i in rh_condicionantes if st.checkbox(i, key=f'rh_cond_{i}')]
-        obs_rh = st.text_area("Notas sobre o Meio Hídrico (Caudal, poluição, etc.):")
-    st.divider()
-    st.warning("ℹ️ Nota: Verifique a servidão de margem (Art. 21.º da Lei da Água).")
+    incide_rh = st.toggle("🌊 A infração afeta Recursos Hídricos?", key="switch_rh")
+    if incide_rh:
+        st.info("**Recursos Hídricos (Lei da Água - Lei n.º 58/2005)**")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.write("**Interdições**")
+            sel_rh_int = [i for i in rh_interdicoes if st.checkbox(i, key=f'rh_int_{i}')]
+        with col2:
+            st.write("**Condicionantes**")
+            sel_rh_cond = [i for i in rh_condicionantes if st.checkbox(i, key=f'rh_cond_{i}')]
+    else:
+        st.info("Regime de Recursos Hídricos desativado.")
+        sel_rh_int, sel_rh_cond = [], []
+
 with tabs[6]:
-    st.info("**Ordenamento do Território (Plano Diretor Municipal - PDM)**")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("**Classes e Categorias de Espaço (PDM)**")
-        sel_pdm = st.multiselect("Selecione a classificação do solo no local:", pdm_classes_solo)
-        confo_pdm = st.radio("Conformidade com o Plano:", ["Em conformidade", "Não conforme (Uso não previsto)", "Uso condicionado (Falta de título)"])
-    with col2:
-        st.write("**Documentação de Suporte**")
-        upload_pdm = st.file_uploader("📂 Carregar Regulamento do PDM (PDF)", type=['pdf'], key="pdm_reg")
-        artigo_pdm = st.text_input("Artigo(s) do Regulamento aplicável(eis):", placeholder="Ex: Artigo 45.º")
-    
-    desc_pdm = st.text_area(
-        "📝 Análise Técnica de Enquadramento no PDM", 
-        placeholder="Descreva a violação dos índices urbanísticos ou afastamentos...",
-        height=100
-    )
-    st.divider()
+    incide_pdm = st.toggle("🗺️ A infração viola o PDM / Urbanismo?", key="switch_pdm")
+    if incide_pdm:
+        st.info("**Ordenamento do Território (PDM)**")
+        col1, col2 = st.columns(2)
+        with col1:
+            sel_pdm = st.multiselect("Classe do solo:", pdm_classes_solo)
+            confo_pdm = st.radio("Conformidade:", ["Não conforme", "Uso condicionado", "Em conformidade"])
+        with col2:
+            artigo_pdm = st.text_input("Artigo aplicável:")
+            desc_pdm = st.text_area("Análise Técnica Urbanística:")
+    else:
+        st.info("Regime de PDM desativado.")
+        sel_pdm, confo_pdm, artigo_pdm, desc_pdm = [], "N/A", "", ""
 
 with tabs[7]:
     st.subheader("🛠️ Medidas de Minimização Propostas")
