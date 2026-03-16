@@ -217,25 +217,41 @@ medidas_minimizacao = [
     "🛡️ Instalação de barreiras acústicas ou de contenção de poeiras"
 ]
 
-# 💰 MATRIZ JURÍDICA DE SANÇÕES ATUALIZADA
+# 💰 MATRIZ JURÍDICA DE SANÇÕES TOTAL (Consolidada com Património, Água e PDM)
 matriz_sancionatoria = {
     "REN": {
-        "Diploma": "DL 166/2008 (Art. 43.º) e Lei 50/2006",
+        "Diploma": "DL 166/2008 (Art. 43.º) e Lei 50/2006 (Quadro Sancionatório Ambiental)",
         "Pessoa Singular": "2.000€ a 37.500€ (Contraordenação Muito Grave)",
-        "Pessoa Coletiva": "12.000€ a 2.500.000€ (Conforme dimensão da empresa)"
+        "Pessoa Coletiva": "12.000€ a 2.500.000€ (Conforme dimensão e faturação da empresa)"
     },
     "RAN": {
-        "Diploma": "DL 73/2009 (Art. 39.º) atualizado pelo DL 199/2015",
+        "Diploma": "DL 73/2009 (Art. 39.º) republicado pelo DL 199/2015",
         "Interdições/Utilizações": "1.000€ a 3.500€ (Singular) | 1.000€ a 35.000€ (Coletiva)",
-        "Deveres Acessórios": "500€ a 1.750€ (Singular) | 500€ a 17.500€ (Coletiva)"
+        "Deveres Acessórios": "500€ a 1.750€ (Singular) | 500€ a 17.500€ (Coletiva)",
+        "Nota": "Atos administrativos que violem o regime da RAN são NULOS (Art. 38.º)"
     },
     "NATURA 2000": {
         "Diploma": "DL 140/99 (Art. 30.º) e Lei 50/2006 (Lei de Bases do Ambiente)",
         "Pessoa Singular": "2.000€ a 37.500€ (Contraordenação Muito Grave)",
         "Pessoa Coletiva": "12.000€ a 5.000.000€ (Conforme gravidade e índice de faturação)"
+    },
+    "PATRIMÓNIO": {
+        "Diploma": "Lei n.º 107/2001 (Art. 94.º a 100.º)",
+        "Pessoa Singular": "149,64€ a 3.740,98€",
+        "Pessoa Coletiva": "1.496,39€ a 44.891,81€",
+        "Nota": "Licenciamentos que violem normas de proteção são NULOS (Art. 5.º)"
+    },
+    "RECURSOS HÍDRICOS": {
+        "Diploma": "Lei n.º 58/2005 (Lei da Água) e Lei n.º 50/2006",
+        "Pessoa Singular": "2.000€ a 37.500€ (Infrações Muito Graves)",
+        "Pessoa Coletiva": "12.000€ a 2.500.000€ (Conforme volume de negócios)"
+    },
+    "PDM / URBANISMO": {
+        "Diploma": "DL n.º 80/2015 (RJIGT) e RJUE (DL n.º 555/99)",
+        "Pessoa Singular": "500€ a 200.000€ (Dependendo da tipologia da operação)",
+        "Pessoa Coletiva": "1.500€ a 450.000€ (Conforme a gravidade da infração urbanística)"
     }
 }
-
 # 🏛️ ORDENAMENTO DO TERRITÓRIO (PDM - Regime Jurídico IGT)
 pdm_classes_solo = [
     "🏙️ Solo Urbano - Áreas Edificadas (Consolidadas/A expandir)",
@@ -441,7 +457,7 @@ with tabs[7]:
         if not api_key:
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A analisar conformidade legal e regimes sancionatórios..."):
+            with st.spinner("A analisar conformidade legal e regimes sancionatórios transversais..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
                 # Contexto condicional para Natura 2000
@@ -455,13 +471,13 @@ with tabs[7]:
                     - Zonamento: {sel_zon}
                     """
 
-                # Contexto condicional para RAN com cruzamento Portaria 162/2011
+                # Contexto condicional para RAN com texto integral e Portaria 162/2011
                 contexto_ran = ""
                 if incide_ran:
                     contexto_ran = f"""
-                    RESERVA AGRÍCOLA NACIONAL (RAN) - DL 73/2009 e DL 199/2015:
-                    - Ações Interditas Selecionadas (Art. 21.º): {sel_inter_ran}
-                    - Pretensão de Uso Selecionada (Art. 22.º): {sel_util_ran}
+                    RESERVA AGRÍCOLA NACIONAL (RAN):
+                    - Ações Interditas Selecionadas (Texto Integral Art. 21.º): {sel_inter_ran}
+                    - Pretensão de Uso Selecionada (Texto Integral Art. 22.º): {sel_util_ran}
                     - Incumprimentos Técnicos (Portaria 162/2011): 
                         * Violação de Áreas Máximas (ATI): {viola_ati}
                         * Falta de Parecer Prévio Vinculativo: {falta_parecer_ran}
@@ -469,8 +485,8 @@ with tabs[7]:
                     """
 
                 prompt = f"""
-                Age como Perito Técnico Sénior e Jurista especializado em Direito do Ambiente e Ordenamento do Território.
-                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada, estruturada para um processo de fiscalização.
+                Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
+                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada para um processo de contraordenação.
 
                 DADOS DO INFRACTOR E LOCAL:
                 - Localidade: {local} (Coordenadas: {lat}/{lon}). Área afetada: {area_m2}m2.
@@ -483,35 +499,38 @@ with tabs[7]:
                 - REN: {sel_ren if incide_ren else 'N/A'}.
                 {contexto_ran}
                 {contexto_natura}
+                - PATRIMÓNIO: {sel_pat_int + sel_pat_cond if 'sel_pat_int' in locals() else 'N/A'}.
+                - RECURSOS HÍDRICOS: {sel_rh_int + sel_rh_cond if 'sel_rh_int' in locals() else 'N/A'}.
                 - PDM: Classe={sel_pdm}. Conformidade={confo_pdm}. Análise Técnica={desc_pdm}.
 
-                VALORES DE COIMAS PARA ENQUADRAMENTO:
-                {matriz_sancionatoria}
+                VALORES DE COIMAS PARA ENQUADRAMENTO (USAR COMO REFERÊNCIA):
+                - RAN: Art. 39.º DL 73/2009 (1.000€ a 3.500€ Singular | 1.000€ a 35.000€ Coletiva).
+                - REN/AGUA/NATURA: Lei n.º 50/2006 (Até 37.500€ Singular | Até 2.500.000€ Coletiva).
+                - PATRIMÓNIO: Lei n.º 107/2001 (149€ a 3.740€ Singular | 1.496€ a 44.891€ Coletiva).
+                - PDM: RJIGT e RJUE (500€ a 200.000€ Singular | 1.500€ a 450.000€ Coletiva).
 
-                ESTRUTURA OBRIGATÓRIA DO DOCUMENTO:
-                1. **OBJETIVO**: Análise da conformidade legal das ações e apuramento de responsabilidade contraordenacional.
-                2. **DESCRIÇÃO TÉCNICA DOS FACTOS**: Relato pormenorizado das ações observadas.
-                3. **FUNDAMENTAÇÃO JURÍDICA E TRANSGRESSÕES**:
-                   - **PARA A RAN**: Identificar as violações ao Decreto-Lei n.º 73/2009 (republicado pelo DL 199/2015). 
-                     * Transcrever na íntegra a alínea violada do Artigo 21.º.
-                     * Se houver pretensão de uso do Artigo 22.º, demonstrar tecnicamente o incumprimento dos requisitos da Portaria n.º 162/2011.
-                   - **PARA A REN**: Citar o DL 166/2008 e as interdições violadas.
-                   - **PARA REDE NATURA 2000**: Citar o DL 140/99 e a violação das condicionantes do Art. 9.º n.º 2.
+                ESTRUTURA OBRIGATÓRIA:
+                1. **OBJETIVO**: Análise da conformidade legal e regimes de servidão administrativa/restrições de utilidade pública.
+                2. **DESCRIÇÃO TÉCNICA**: Relatar pormenorizadamente as ações observadas.
+                3. **FUNDAMENTAÇÃO JURÍDICA**:
+                   - **PARA A RAN**: Transcrever as alíneas do Art. 21.º ou 22.º violadas. Confrontar com os limites da Portaria 162/2011.
+                   - **PARA A REN**: Citar interdições do DL 166/2008.
+                   - **PARA O PATRIMÓNIO**: Citar a Lei 107/2001 e a falta de parecer da tutela, se aplicável.
+                   - **PARA RECURSOS HÍDRICOS**: Citar a Lei 58/2005 (Lei da Água).
+                   - **PARA O PDM**: Integrar a análise de desconformidade urbanística ({desc_pdm}).
                 4. **QUADRO SANCIONATÓRIO E NULIDADES**:
-                   - Indicar que atos administrativos em violação da RAN são **NULOS** (Art. 38.º do DL 73/2009).
-                   - Apresentar os valores das coimas aplicáveis em abstrato com base no tipo de infrator ({tipo_ent}) e na gravidade ({gravidade}).
-                   - Referir que, para RAN, a coima para interdições (Art. 39.º) varia entre 1.000€ e 3.500€ (Singular) ou 35.000€ (Coletiva).
-                   - Referir a remissão para a Lei 50/2006 (REN/Natura 2000).
-                5. **PARECER FINAL E MEDIDAS DE REPOSIÇÃO**: Propor a cessação imediata e as medidas: {sel_medidas}. Mencionar a obrigação de reposição da legalidade (Art. 44.º do RJran).
+                   - Mencionar a NULIDADE de licenciamentos que violem a RAN (Art. 38.º do DL 73/2009) ou o Património (Art. 5.º Lei 107/2001). 
+                   - Apresentar a moldura das coimas em abstrato para o infrator ({tipo_ent}), citando os valores mínimos e máximos.
+                5. **PARECER FINAL E MEDIDAS DE REPOSIÇÃO**: Propor medidas imediatas ({sel_medidas}) e a reposição da legalidade (Art. 44.º do RJran). [cite: 410, 411, 795, 796, 797, 1221, 1222, 1223]
 
-                ESTILO: Formal, PT-PT, capítulos a BOLD. Texto rigoroso e pronto para assinatura técnica.
+                ESTILO: Jurídico, formal, Português de Portugal (PT-PT).
                 """
                 
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Informação Técnica Gerada com Sucesso!")
-                    st.download_button("📥 Descarregar Documento (Word)", export_docx(res), file_name=f"Relatorio_Fiscalizacao_{local}.docx")
+                    st.success("Informação Técnica Fundamentada preparada!")
+                    st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                     st.write(res)
                 except Exception as e:
-                    st.error(f"Erro na geração do documento: {e}")
+                    st.error(f"Erro na geração: {e}")
 
