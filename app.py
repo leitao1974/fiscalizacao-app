@@ -467,10 +467,10 @@ with tabs[7]:
         if not api_key:
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A analisar conformidade legal e regimes sancionatórios transversais..."):
+            with st.spinner("A analisar conformidade legal e viabilidade de legalização transversal..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
-                # Contexto condicional para Natura 2000
+                # 1. Contexto Natura 2000
                 contexto_natura = ""
                 if incide_natura:
                     contexto_natura = f"""
@@ -481,7 +481,7 @@ with tabs[7]:
                     - Zonamento: {sel_zon}
                     """
 
-                # Contexto condicional para RAN com texto integral e Portaria 162/2011
+                # 2. Contexto RAN (DL 73/2009 e Portaria 162/2011)
                 contexto_ran = ""
                 if incide_ran:
                     contexto_ran = f"""
@@ -494,15 +494,18 @@ with tabs[7]:
                         * Inexistência de Prova de Alternativa: {falta_alternativa}
                     """
 
-                # Contexto condicional para PDM com Regulamento
-                contexto_pdm = ""
+                # 3. Contexto PDM com Extração de Regulamento
+                contexto_pdm_texto = ""
                 if incide_pdm:
                     texto_regulamento = ""
                     if upload_pdm:
-                        reader = PdfReader(upload_pdm)
-                        texto_regulamento = "\\n".join([page.extract_text() for page in reader.pages[:10]]) # Primeiras 10 páginas para contexto
+                        try:
+                            reader = PdfReader(upload_pdm)
+                            texto_regulamento = "\\n".join([page.extract_text() for page in reader.pages[:10]])
+                        except Exception as e:
+                            texto_regulamento = f"Erro na leitura do PDF: {e}"
                     
-                    contexto_pdm = f"""
+                    contexto_pdm_texto = f"""
                     ORDENAMENTO DO TERRITÓRIO (PDM):
                     - Classe de Solo: {sel_pdm}
                     - Conformidade: {confo_pdm}
@@ -511,9 +514,13 @@ with tabs[7]:
                     - Extrato do Regulamento: {texto_regulamento[:2000]}...
                     """
 
+                # 4. Contextos Adicionais (Património e Recursos Hídricos)
+                contexto_patrimonio = f"PATRIMÓNIO: {sel_pat_int + sel_pat_cond if incide_patrimonio else 'N/A'}"
+                contexto_rh = f"RECURSOS HÍDRICOS: {sel_rh_int + sel_rh_cond if incide_rh else 'N/A'}"
+
                 prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
-                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada para um processo de contraordenação.
+                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada que determine a VIABILIDADE DE LEGALIZAÇÃO.
 
                 DADOS DO INFRACTOR E LOCAL:
                 - Localidade: {local} (Coordenadas: {lat}/{lon}). Área afetada: {area_m2}m2.
@@ -526,34 +533,36 @@ with tabs[7]:
                 - REN: {sel_ren if incide_ren else 'N/A'}.
                 {contexto_ran}
                 {contexto_natura}
-                - PATRIMÓNIO: {sel_pat_int + sel_pat_cond if incide_patrimonio else 'N/A'}.
-                - RECURSOS HÍDRICOS: {sel_rh_int + sel_rh_cond if incide_rh else 'N/A'}.
-                {contexto_pdm}
+                - {contexto_patrimonio}
+                - {contexto_rh}
+                {contexto_pdm_texto}
 
-                VALORES DE COIMAS PARA ENQUADRAMENTO (USAR COMO REFERÊNCIA):
+                VALORES DE COIMAS PARA ENQUADRAMENTO:
                 {matriz_sancionatoria}
 
                 ESTRUTURA OBRIGATÓRIA DO DOCUMENTO:
-                1. **OBJETIVO**: Análise da conformidade legal e regimes de servidão administrativa/restrições de utilidade pública.
-                2. **DESCRIÇÃO TÉCNICA**: Relatar pormenorizadamente as ações observadas no terreno (construções, escavações, depósitos, etc).
+                1. **OBJETIVO**: Análise da conformidade legal e regimes de servidão administrativa.
+                2. **DESCRIÇÃO TÉCNICA**: Relatar pormenorizadamente as ações observadas no terreno.
                 3. **FUNDAMENTAÇÃO JURÍDICA E TRANSGRESSÕES**:
-                   - **PARA A RAN**: Transcrever obrigatoriamente as alíneas selecionadas do Artigo 21.º (interdições) ou Artigo 22.º (usos permitidos) do DL 73/2009 republicado pelo DL 199/2015. Confrontar a ação com os limites técnicos da Portaria n.º 162/2011.
-                   - **PARA A REN**: Citar as interdições do DL n.º 166/2008.
-                   - **PARA REDE NATURA 2000**: Citar a violação das condicionantes do Artigo 9.º n.º 2 do DL n.º 140/99.
-                   - **PARA O PATRIMÓNIO**: Citar a Lei n.º 107/2001 e a falta de parecer prévio da tutela, se aplicável.
-                   - **PARA RECURSOS HÍDRICOS**: Citar a Lei n.º 58/2005 (Lei da Água).
-                   - **PARA O PDM**: Integrar a análise de desconformidade urbanística com o regulamento municipal e os artigos citados.
-                4. **QUADRO SANCIONATÓRIO E NULIDADES**:
-                   - Mencionar a NULIDADE de licenciamentos administrativos que violem a RAN (Artigo 38.º do DL n.º 73/2009) ou o Património (Artigo 5.º da Lei n.º 107/2001).
-                   - Apresentar a moldura das coimas em abstrato para o infrator ({tipo_ent}), citando os valores mínimos e máximos da matriz legal.
-                5. **PARECER FINAL E MEDIDAS DE REPOSIÇÃO**: Propor medidas imediatas ({sel_medidas}), a cessação de ações (Artigo 43.º) e a reposição da legalidade/situação anterior (Artigo 44.º do RJran).
+                   - Identificar as normas violadas em cada regime ativo (RAN, REN, Natura 2000, Património, Recursos Hídricos, PDM).
+                   - Para a RAN: Transcrever obrigatoriamente as alíneas do Artigo 21.º ou 22.º do DL 73/2009.
+                4. **ANÁLISE JURÍDICA DE VIABILIDADE DE LEGALIZAÇÃO (OBRIGATÓRIO)**:
+                   - Analisar se a infração é suscetível de legalização face aos critérios de exceção de cada diploma.
+                   - Verificar se a pretensão cumpre os requisitos cumulativos (ex: Art. 22.º da RAN e limites da Portaria 162/2011).
+                   - Concluir explicitamente se a ação é "Legalizável" ou "Insuscetível de Legalização".
+                5. **QUADRO SANCIONATÓRIO E NULIDADES**:
+                   - Mencionar a NULIDADE de licenciamentos administrativos que violem a RAN (Artigo 38.º do DL 73/2009) ou o Património (Artigo 5.º da Lei 107/2001).
+                   - Apresentar a moldura das coimas em abstrato para o infrator ({tipo_ent}), citando os valores mínimos e máximos da matriz legal fornecida.
+                6. **PARECER FINAL E MEDIDAS DE REPOSIÇÃO**:
+                   - Se legalizável: Indicar os termos e passos necessários (ex: taxas, pareceres).
+                   - Se não legalizável: Propor medidas imediatas ({sel_medidas}), cessação de ações (Artigo 43.º) e reposição da legalidade/situação anterior (Artigo 44.º do RJran).
 
                 ESTILO: Jurídico, formal, Português de Portugal (PT-PT). Capítulos a BOLD.
                 """
                 
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Informação Técnica Fundamentada gerada!")
+                    st.success("Informação Técnica e Análise de Viabilidade geradas!")
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                     st.write(res)
                 except Exception as e:
