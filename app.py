@@ -400,17 +400,26 @@ with tabs[5]:
 with tabs[6]:
     incide_pdm = st.toggle("🗺️ A infração viola o PDM / Urbanismo?", key="switch_pdm")
     if incide_pdm:
-        st.info("**Ordenamento do Território (PDM)**")
+        st.info("**Ordenamento do Território (Plano Diretor Municipal - PDM)**")
         col1, col2 = st.columns(2)
         with col1:
-            sel_pdm = st.multiselect("Classe do solo:", pdm_classes_solo)
-            confo_pdm = st.radio("Conformidade:", ["Não conforme", "Uso condicionado", "Em conformidade"])
+            st.write("**Classes e Categorias de Espaço (PDM)**")
+            sel_pdm = st.multiselect("Selecione a classificação do solo no local:", pdm_classes_solo)
+            confo_pdm = st.radio("Conformidade com o Plano:", ["Não conforme (Uso não previsto)", "Uso condicionado (Falta de título)", "Em conformidade"])
         with col2:
-            artigo_pdm = st.text_input("Artigo aplicável:")
-            desc_pdm = st.text_area("Análise Técnica Urbanística:")
+            st.write("**Documentação de Suporte**")
+            # Reintegração da função de carregamento do regulamento
+            upload_pdm = st.file_uploader("📂 Carregar Regulamento do PDM (PDF)", type=['pdf'], key="pdm_reg_upload")
+            artigo_pdm = st.text_input("Artigo(s) do Regulamento aplicável(eis):", placeholder="Ex: Artigo 45.º")
+    
+        desc_pdm = st.text_area(
+            "📝 Análise Técnica de Enquadramento no PDM", 
+            placeholder="Descreva a violação dos índices urbanísticos, afastamentos ou usos interditos...",
+            height=100
+        )
     else:
-        st.info("Regime de PDM desativado.")
-        sel_pdm, confo_pdm, artigo_pdm, desc_pdm = [], "N/A", "", ""
+        st.info("Regime de PDM desativado para esta ocorrência.")
+        sel_pdm, confo_pdm, artigo_pdm, desc_pdm, upload_pdm = [], "N/A", "", "", None
 
 with tabs[7]:
     st.subheader("🛠️ Medidas de Minimização Propostas")
@@ -485,6 +494,23 @@ with tabs[7]:
                         * Inexistência de Prova de Alternativa: {falta_alternativa}
                     """
 
+                # Contexto condicional para PDM com Regulamento
+                contexto_pdm = ""
+                if incide_pdm:
+                    texto_regulamento = ""
+                    if upload_pdm:
+                        reader = PdfReader(upload_pdm)
+                        texto_regulamento = "\\n".join([page.extract_text() for page in reader.pages[:10]]) # Primeiras 10 páginas para contexto
+                    
+                    contexto_pdm = f"""
+                    ORDENAMENTO DO TERRITÓRIO (PDM):
+                    - Classe de Solo: {sel_pdm}
+                    - Conformidade: {confo_pdm}
+                    - Artigo do Regulamento: {artigo_pdm}
+                    - Análise Técnica: {desc_pdm}
+                    - Extrato do Regulamento: {texto_regulamento[:2000]}...
+                    """
+
                 prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
                 O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada para um processo de contraordenação.
@@ -502,21 +528,21 @@ with tabs[7]:
                 {contexto_natura}
                 - PATRIMÓNIO: {sel_pat_int + sel_pat_cond if incide_patrimonio else 'N/A'}.
                 - RECURSOS HÍDRICOS: {sel_rh_int + sel_rh_cond if incide_rh else 'N/A'}.
-                - PDM: Classe={sel_pdm}. Conformidade={confo_pdm}. Análise Técnica={desc_pdm}.
+                {contexto_pdm}
 
                 VALORES DE COIMAS PARA ENQUADRAMENTO (USAR COMO REFERÊNCIA):
                 {matriz_sancionatoria}
 
-                ESTRUTURA OBRIGATÓRIA:
+                ESTRUTURA OBRIGATÓRIA DO DOCUMENTO:
                 1. **OBJETIVO**: Análise da conformidade legal e regimes de servidão administrativa/restrições de utilidade pública.
                 2. **DESCRIÇÃO TÉCNICA**: Relatar pormenorizadamente as ações observadas no terreno (construções, escavações, depósitos, etc).
-                3. **FUNDAMENTAÇÃO JURÍDICA**:
-                   - **PARA A RAN**: Transcrever obrigatoriamente as alíneas selecionadas do Artigo 21.º (interdições) ou Artigo 22.º (usos permitidos). Confrontar a ação com os limites técnicos da Portaria n.º 162/2011.
-                   - **PARA A REN**: Citar as interdições do DL n.º 166/2008 (alterado pelo DL n.º 239/2012).
+                3. **FUNDAMENTAÇÃO JURÍDICA E TRANSGRESSÕES**:
+                   - **PARA A RAN**: Transcrever obrigatoriamente as alíneas selecionadas do Artigo 21.º (interdições) ou Artigo 22.º (usos permitidos) do DL 73/2009 republicado pelo DL 199/2015. Confrontar a ação com os limites técnicos da Portaria n.º 162/2011.
+                   - **PARA A REN**: Citar as interdições do DL n.º 166/2008.
                    - **PARA REDE NATURA 2000**: Citar a violação das condicionantes do Artigo 9.º n.º 2 do DL n.º 140/99.
                    - **PARA O PATRIMÓNIO**: Citar a Lei n.º 107/2001 e a falta de parecer prévio da tutela, se aplicável.
                    - **PARA RECURSOS HÍDRICOS**: Citar a Lei n.º 58/2005 (Lei da Água).
-                   - **PARA O PDM**: Integrar a análise de desconformidade urbanística com o regulamento municipal.
+                   - **PARA O PDM**: Integrar a análise de desconformidade urbanística com o regulamento municipal e os artigos citados.
                 4. **QUADRO SANCIONATÓRIO E NULIDADES**:
                    - Mencionar a NULIDADE de licenciamentos administrativos que violem a RAN (Artigo 38.º do DL n.º 73/2009) ou o Património (Artigo 5.º da Lei n.º 107/2001).
                    - Apresentar a moldura das coimas em abstrato para o infrator ({tipo_ent}), citando os valores mínimos e máximos da matriz legal.
