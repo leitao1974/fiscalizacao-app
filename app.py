@@ -138,22 +138,35 @@ zonamento_tipologias = [
     "Zona de Proteção Estrita", "Zona de Proteção de Albufeira"
 ]
 
-# 🌾 RAN - MATRIZ TÉCNICA REFINADA (DL 199/2015 + Portaria 162/2011)
-ran_interdicoes_gerais = [
-    "🏗️ Operações de loteamento e urbanização",
-    "🧱 Obras de construção ou ampliação (sem enquadramento)",
-    "🛣️ Instalação de vias de comunicação e acessos",
-    "🚜 Escavações e aterros que alterem o perfil do solo",
-    "🪓 Destruição do revestimento vegetal (não agrícola/florestal)"
-]
+# 🌾 RAN - MATRIZ LEGAL INTEGRAL (DL 73/2009 republicado pelo DL 199/2015)
 
-ran_limites_dict = {
-    "Habitação Própria": "ATI Máxima: 500 m²",
-    "Turismo em Espaço Rural (TER)": "Máximo 20% da área (limite 5.000 m²)",
-    "Unidades Agro-industriais": "Máximo 10% da área (limite 2.000 m²)",
-    "Apoios Agrícolas": "Área de implantação ≤ 40 m²",
-    "Cabinas de Rega": "Área inferior a 4 m²",
-    "Muros de Suporte": "Limite à cota do terreno ou +0,20m"
+# Transcrição Integral: Ações Interditas - Artigo 21.º
+ran_interdicoes_dict = {
+    "a) Operações de loteamento e obras de urbanização, construção ou ampliação, com excepção das utilizações previstas no artigo seguinte;": "Interdição de novas edificações fora das exceções legais [cite: 238, 1034]",
+    "b) Lançamento ou depósito de resíduos radioactivos, resíduos sólidos urbanos, residuos industriais ou outros produtos que contenham substâncias ou microrganismos que possam alterar e deteriorar as características do solo;": "Proibição de deposição de produtos contaminantes [cite: 239, 1035]",
+    "c) Aplicação de volumes excessivos de lamas nos termos da legislação aplicável, designadamente resultantes da utilização indiscriminada de processos de tratamento de efluentes;": "Violação dos limites de tratamento de efluentes no solo [cite: 240, 1036]",
+    "d) Intervenções ou utilizações que provoquem a degradação do solo, nomeadamente erosão, compactação, desprendimento de terras, encharcamento, inundações, excesso de salinidade, poluição e outros efeitos perniciosos;": "Ações prejudiciais à estrutura física/química do solo [cite: 241, 1037]",
+    "e) Utilização indevida de técnicas ou produtos fertilizantes e fitofarmacêuticos;": "Uso de químicos fora das normas técnicas [cite: 244, 1038]",
+    "f) Deposição, abandono ou depósito de entulhos, sucatas ou quaisquer outros resíduos.": "Deposição de resíduos de construção ou veículos em fim de vida [cite: 245, 1039]"
+}
+
+# Transcrição Integral: Utilizações Permitidas - Artigo 22.º (Cruzado com Portaria 162/2011)
+ran_utilizacoes_permitidas = {
+    "a) Obras com finalidade agrícola, quando integradas na gestão das explorações ligadas à actividade agrícola, nomeadamente, obras de edificação, obras hidráulicas, vias de acesso, aterros e escavações, e edificações para armazenamento ou comercialização;": "Portaria 162/2011: Implantação ≤ 1% da exploração (máx 750m2). Apoios ≤ 40m2 [cite: 249, 1043, 1449]",
+    "b) Construção ou ampliação de habitação para residência própria e permanente de agricultores em exploração agrícola;": "Portaria 162/2011: ATI máxima de 300m2. Requer prova de rendimento agrícola [cite: 250, 1044, 1474]",
+    "c) Construção ou ampliação de habitação para residência própria e permanente dos proprietários e respectivos agregados familiares, com os limites de área e tipologia estabelecidos no regime da habitação a custos controlados...": "Portaria 162/2011: ATI máxima de 300m2 [cite: 251, 1045, 1481]",
+    "d) Instalações ou equipamentos para produção de energia a partir de fontes de energia renováveis;": "Requer projeto de recuperação dos solos para parecer da DRAP [cite: 252, 1046, 1497]",
+    "e) Prospecção geológica e hidrogeológica e exploração de recursos geológicos, e respectivos anexos de apoio à exploração, respeitada a legislação específica...": "Planos de lavra e PARP devem ter parecer da DRAP [cite: 253, 1048, 1516]",
+    "f) Estabelecimentos industriais, comerciais ou de serviços complementares à actividade agrícola, tal como identificados no regime de licenciamento aplicável;": "Pelo menos 50% da capacidade para produtos da própria exploração [cite: 254, 1049, 1537]",
+    "g) Empreendimentos de turismo no espaço rural e de turismo de habitação, bem como empreendimentos reconhecidos como turismo de natureza, complementares à actividade agrícola;": "Área de implantação total ≤ 600m2 [cite: 255, 1050, 1543]",
+    "h) Instalações de recreio e lazer complementares à actividade agrícola e ao espaço rural;": "Estruturas amovíveis e necessidade justificada pela atividade [cite: 256, 1051, 1550]",
+    "i) Instalações desportivas especializadas destinadas à prática de golfe, com parecer favorável pelo Turismo de Portugal, I. P., desde que não impliquem alterações irreversíveis na topografia...": "Sem alterações irreversíveis na topografia [cite: 257, 1052, 1559]",
+    "j) Obras e intervenções indispensáveis à salvaguarda do património cultural, designadamente de natureza arqueológica, recuperação paisagística ou medidas de minimização...": "Determinadas pelas autoridades competentes [cite: 258, 1053, 1566]",
+    "l) Obras de construção, requalificação ou beneficiação de infra-estruturas públicas rodoviárias, ferroviárias, aeroportuárias, de logística, de saneamento, de transporte e distribuição de energia eléctrica...": "Justificação da localização e medidas de minimização de ocupação RAN [cite: 259, 1054, 1572]",
+    "m) Obras indispensáveis para a protecção civil;": "Sem alternativa viável fora da RAN e parecer da Proteção Civil [cite: 261, 1055, 1593]",
+    "n) Obras de reconstrução e ampliação de construções já existentes, desde que estas já se destinassem e continuem a destinar-se a habitação própria;": "Portaria 162/2011: ATI total de impermeabilização ≤ 300m2 [cite: 262, 1055, 1600]",
+    "o) Obras de captação de águas ou de implantação de infra-estruturas hidráulicas;": "Necessidade justificada e medidas de minimização de escavação [cite: 263, 1056, 1607]",
+    "p) Obras decorrentes de exigências legais supervenientes relativas à regularização de actividades económicas previamente exercidas.": "Novo enquadramento pelo DL 199/2015 [cite: 705, 1057]"
 }
 
 # 🏛️ PATRIMÓNIO CULTURAL (Lei 107/2001)
@@ -204,12 +217,23 @@ medidas_minimizacao = [
     "🛡️ Instalação de barreiras acústicas ou de contenção de poeiras"
 ]
 
-# 💰 MATRIZ JURÍDICA DE SANÇÕES
+# 💰 MATRIZ JURÍDICA DE SANÇÕES ATUALIZADA
 matriz_sancionatoria = {
-    "REN": "DL 166/2008, Art. 43.º (Contraordenações Graves ou Muito Graves)",
-    "RAN": "DL 73/2009, Art. 43.º (Coimas de 250€ a 3.740€ para pessoas singulares e até 44.890€ para coletivas)",
-    "NATURA 2000": "DL 140/99, Art. 30.º (Remete para a Lei 50/2006)",
-    "AGUA": "Lei 58/2005, Art. 95.º e 96.º (Remete para o regime da Lei 50/2006)"
+    "REN": {
+        "Diploma": "DL 166/2008 (Art. 43.º) e Lei 50/2006",
+        "Pessoa Singular": "2.000€ a 37.500€ (Contraordenação Muito Grave)",
+        "Pessoa Coletiva": "12.000€ a 2.500.000€ (Conforme dimensão da empresa)"
+    },
+    "RAN": {
+        "Diploma": "DL 73/2009 (Art. 39.º) atualizado pelo DL 199/2015",
+        "Interdições/Utilizações": "1.000€ a 3.500€ (Singular) | 1.000€ a 35.000€ (Coletiva)",
+        "Deveres Acessórios": "500€ a 1.750€ (Singular) | 500€ a 17.500€ (Coletiva)"
+    },
+    "NATURA 2000": {
+        "Diploma": "DL 140/99 (Art. 30.º) e Lei 50/2006 (Lei de Bases do Ambiente)",
+        "Pessoa Singular": "2.000€ a 37.500€ (Contraordenação Muito Grave)",
+        "Pessoa Coletiva": "12.000€ a 5.000.000€ (Conforme gravidade e índice de faturação)"
+    }
 }
 
 # 🏛️ ORDENAMENTO DO TERRITÓRIO (PDM - Regime Jurídico IGT)
@@ -300,22 +324,31 @@ with tabs[3]:
     incide_ran = st.toggle("🌾 A infração localiza-se em área de RAN?", key="switch_ran")
     
     if incide_ran:
-        st.info("**Reserva Agrícola Nacional (DL 73/2009 atualizado pelo DL 199/2015)**")
+        st.info("**Reserva Agrícola Nacional (Decreto-Lei n.º 73/2009 e republicação pelo DL 199/2015)**")
         col_r1, col_r2 = st.columns(2)
         with col_r1:
-            st.subheader("1. Interdições")
-            sel_inter_ran = [i for i in ran_interdicoes_gerais if st.checkbox(i, key=f'ran_inter_{i}')]
-            regime_ran = st.radio("Procedimento:", ["Isenção", "Comunicação Prévia", "Interesse Público"], key="reg_ran")
+            st.subheader("1. Ações Interditas (Texto Integral Art. 21.º)")
+            sel_inter_ran = [k for k in ran_interdicoes_dict.keys() if st.checkbox(k, key=f'ran_int_{k[:5]}')]
+            
+            st.subheader("2. Pretensão de Enquadramento (Art. 22.º)")
+            sel_util_ran = st.multiselect(
+                "Ação enquadrada em qual alínea de utilização permitida?", 
+                list(ran_utilizacoes_permitidas.keys()),
+                key="util_ran_sel"
+            )
         with col_r2:
-            st.subheader("2. Verificação de Limites")
-            lim_hab = st.checkbox("Habitação: Excede ATI de 500 m²")
-            lim_apoio = st.checkbox("Apoio Agrícola: Área > 40 m²")
-            falta_alternativa = st.checkbox("Existe alternativa viável fora da RAN")
+            st.subheader("3. Verificação de Limites (Portaria 162/2011)")
+            viola_ati = st.checkbox("Violação de Área (Excede 300m² para habitação ou 750m² para armazéns) [cite: 1449, 1474, 1600]")
+            falta_parecer_ran = st.checkbox("Falta de Parecer Prévio Vinculativo da Entidade Regional [cite: 267, 1063]")
+            viola_permeabilidade = st.checkbox("Uso de pavimentos não permeáveis em vias de acesso [cite: 1458]")
+            
+            st.write("---")
+            if sel_util_ran:
+                for util in sel_util_ran:
+                    st.caption(f"🛡️ **Condicionante Técnica:** {ran_utilizacoes_permitidas[util]}")
     else:
         st.warning("Área de RAN não selecionada.")
-        sel_inter_ran, regime_ran = [], "N/A"
-        lim_hab, lim_apoio, falta_alternativa = False, False, False
-
+        sel_inter_ran, sel_util_ran = [], []
 with tabs[4]:
     st.warning("**Património Cultural (Lei 107/2001 - Bases da Política e do Regime de Proteção)**")
     col1, col2 = st.columns(2)
@@ -408,10 +441,10 @@ with tabs[7]:
         if not api_key:
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A analisar conformidade legal (REN, RAN, Natura 2000)..."):
+            with st.spinner("A analisar conformidade legal e regimes sancionatórios..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
-                # Construção do contexto condicional para o prompt
+                # Contexto condicional para Natura 2000
                 contexto_natura = ""
                 if incide_natura:
                     contexto_natura = f"""
@@ -422,42 +455,63 @@ with tabs[7]:
                     - Zonamento: {sel_zon}
                     """
 
+                # Contexto condicional para RAN com cruzamento Portaria 162/2011
+                contexto_ran = ""
+                if incide_ran:
+                    contexto_ran = f"""
+                    RESERVA AGRÍCOLA NACIONAL (RAN) - DL 73/2009 e DL 199/2015:
+                    - Ações Interditas Selecionadas (Art. 21.º): {sel_inter_ran}
+                    - Pretensão de Uso Selecionada (Art. 22.º): {sel_util_ran}
+                    - Incumprimentos Técnicos (Portaria 162/2011): 
+                        * Violação de Áreas Máximas (ATI): {viola_ati}
+                        * Falta de Parecer Prévio Vinculativo: {falta_parecer_ran}
+                        * Inexistência de Prova de Alternativa: {falta_alternativa}
+                    """
+
                 prompt = f"""
-                Age como Perito Técnico Sénior e Jurista especializado em Ordenamento do Território.
-                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
+                Age como Perito Técnico Sénior e Jurista especializado em Direito do Ambiente e Ordenamento do Território.
+                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada, estruturada para um processo de fiscalização.
 
-                DADOS DO LOCAL E INTERESSADO:
-                - Localidade: {local}, Coordenadas: {lat}/{lon}. Área afetada: {area_m2}m2.
-                - Interessado: {inf_nome}, NIF: {inf_nif}.
+                DADOS DO INFRACTOR E LOCAL:
+                - Localidade: {local} (Coordenadas: {lat}/{lon}). Área afetada: {area_m2}m2.
+                - Interessado: {inf_nome}, NIF: {inf_nif}, Tipo: {tipo_ent}.
 
-                DESCRIÇÃO DOS FACTOS (BASE PARA O RELATÓRIO):
+                DESCRIÇÃO DOS FACTOS:
                 {desc_detalhada}
 
-                ELEMENTOS DE ANÁLISE LEGAL:
+                MATRIZ LEGAL DE ANÁLISE:
                 - REN: {sel_ren if incide_ren else 'N/A'}.
-                - RAN: {sel_inter_ran if incide_ran else 'N/A'}.
+                {contexto_ran}
                 {contexto_natura}
-                - PDM: Classe={sel_pdm}. Conformidade={confo_pdm}. Artigo={artigo_pdm}.
-                - ANÁLISE TÉCNICA PDM: {desc_pdm}
+                - PDM: Classe={sel_pdm}. Conformidade={confo_pdm}. Análise Técnica={desc_pdm}.
 
-                ESTRUTURA OBRIGATÓRIA:
-                1. OBJETIVO: Análise da conformidade legal.
-                2. DESCRIÇÃO DOS FACTOS: Relatar tecnicamente as ações observadas.
-                3. FUNDAMENTAÇÃO JURÍDICA:
-                   - PARA A REN: Citar Declaração de Retificação n.º 63-B/2008 e DL 166/2008.
-                   - PARA REDE NATURA 2000: Se aplicável, citar obrigatoriamente o Decreto-Lei n.º 140/99 e as condicionantes do Artigo 9.º n.º 2.
-                   - PARA O PDM: Integrar a análise técnica ({desc_pdm}).
-                4. CONCLUSÃO E PARECER: Juízo técnico sobre a legalidade.
-                5. PRESCRIÇÕES TÉCNICAS: Listar as medidas {sel_medidas}.
+                VALORES DE COIMAS PARA ENQUADRAMENTO:
+                {matriz_sancionatoria}
 
-                ESTILO: Formal, PT-PT, capítulos a BOLD. SEM proposta de coimas.
+                ESTRUTURA OBRIGATÓRIA DO DOCUMENTO:
+                1. **OBJETIVO**: Análise da conformidade legal das ações e apuramento de responsabilidade contraordenacional.
+                2. **DESCRIÇÃO TÉCNICA DOS FACTOS**: Relato pormenorizado das ações observadas.
+                3. **FUNDAMENTAÇÃO JURÍDICA E TRANSGRESSÕES**:
+                   - **PARA A RAN**: Identificar as violações ao Decreto-Lei n.º 73/2009 (republicado pelo DL 199/2015). 
+                     * Transcrever na íntegra a alínea violada do Artigo 21.º.
+                     * Se houver pretensão de uso do Artigo 22.º, demonstrar tecnicamente o incumprimento dos requisitos da Portaria n.º 162/2011.
+                   - **PARA A REN**: Citar o DL 166/2008 e as interdições violadas.
+                   - **PARA REDE NATURA 2000**: Citar o DL 140/99 e a violação das condicionantes do Art. 9.º n.º 2.
+                4. **QUADRO SANCIONATÓRIO E NULIDADES**:
+                   - Indicar que atos administrativos em violação da RAN são **NULOS** (Art. 38.º do DL 73/2009).
+                   - Apresentar os valores das coimas aplicáveis em abstrato com base no tipo de infrator ({tipo_ent}) e na gravidade ({gravidade}).
+                   - Referir que, para RAN, a coima para interdições (Art. 39.º) varia entre 1.000€ e 3.500€ (Singular) ou 35.000€ (Coletiva).
+                   - Referir a remissão para a Lei 50/2006 (REN/Natura 2000).
+                5. **PARECER FINAL E MEDIDAS DE REPOSIÇÃO**: Propor a cessação imediata e as medidas: {sel_medidas}. Mencionar a obrigação de reposição da legalidade (Art. 44.º do RJran).
+
+                ESTILO: Formal, PT-PT, capítulos a BOLD. Texto rigoroso e pronto para assinatura técnica.
                 """
                 
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Documentação preparada!")
-                    st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
+                    st.success("Informação Técnica Gerada com Sucesso!")
+                    st.download_button("📥 Descarregar Documento (Word)", export_docx(res), file_name=f"Relatorio_Fiscalizacao_{local}.docx")
                     st.write(res)
                 except Exception as e:
-                    st.error(f"Erro na geração: {e}")
+                    st.error(f"Erro na geração do documento: {e}")
 
