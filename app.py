@@ -309,14 +309,21 @@ with tabs[0]:
         area_m2 = st.number_input("Área Afetada (m²)", value=1000.0)
         fotos = st.file_uploader("📸 Fotos", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
     with c2:
-        st.subheader("👤 Dados do Infrator")
+        st.subheader("👤 Dados do Infrator e Documentação")
         inf_nome = st.text_input("Nome/Entidade")
-        inf_morada = st.text_input("Morada/Sede")
-        inf_nif = st.text_input("NIF/NIPC")
-        inf_tel = st.text_input("Telefone")
         tipo_ent = st.radio("Tipo", ["Pessoa Singular", "Pessoa Coletiva"], horizontal=True)
-        # CORREÇÃO: Variável renomeada para desc_detalhada para evitar o NameError
-        desc_detalhada = st.text_area("📝 Descrição Detalhada dos Factos", placeholder="Descreva o que observou no terreno...")
+        
+        # --- NOVO: Carregamento de Auto de Notícia ---
+        upload_auto = st.file_uploader("📄 Carregar Auto de Notícia (PDF)", type=['pdf'], key="auto_noticia_pdf")
+        
+        if upload_auto:
+            st.info("✅ Documento carregado. A IA irá cruzar os dados do Auto com a Matriz Legal.")
+        
+        st.session_state.desc_detalhada = st.text_area(
+            "📝 Observações Adicionais", 
+            value=st.session_state.desc_detalhada,
+            placeholder="Descreva factos complementares não constantes no Auto..."
+        )
 
 with tabs[1]:
     # Interruptor mestre para REN - Atualizado com DL 123/2024
@@ -526,9 +533,18 @@ with tabs[7]:
         if not api_key:
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A analisar conformidade legal e viabilidade de legalização transversal..."):
+            with st.spinner("A analisar Auto de Notícia e conformidade legal transversal..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
+                # --- EXTRAÇÃO DE TEXTO DO AUTO DE NOTÍCIA (NOVO) ---
+                texto_auto_noticia = ""
+                if upload_auto: # Variável definida no separador Identificação
+                    try:
+                        reader_auto = PdfReader(upload_auto)
+                        texto_auto_noticia = "\n".join([page.extract_text() for page in reader_auto.pages])
+                    except Exception as e:
+                        texto_auto_noticia = f"Erro na leitura do Auto de Notícia: {e}"
+
                 # 0. Preparação do Quadro Legislativo para a IA
                 legis_ref_text = ""
                 for cat, leis in QUADRO_LEGAL_REF.items():
@@ -593,13 +609,16 @@ with tabs[7]:
 
                 prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
-                O teu objetivo é redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada que determine a VIABILIDADE DE LEGALIZAÇÃO.
+                O teu objetivo é auditar um Auto de Notícia e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada que determine a VIABILIDADE DE LEGALIZAÇÃO.
+
+                DADOS DO AUTO DE NOTÍCIA CARREGADO (BASE DE ANÁLISE):
+                {texto_auto_noticia if texto_auto_noticia else "Nenhum PDF de Auto de Notícia carregado. Basear exclusivamente nos factos descritos manualmente."}
 
                 DADOS DO INFRACTOR E LOCAL:
                 - Localidade: {local} (Coordenadas: {lat}/{lon}). Área afetada: {area_m2}m2.
                 - Interessado: {inf_nome}, NIF: {inf_nif if 'inf_nif' in locals() else 'N/A'}, Tipo: {tipo_ent}.
 
-                DESCRIÇÃO DOS FACTOS:
+                DESCRIÇÃO MANUAL DOS FACTOS (COMPLEMENTAR AO AUTO):
                 {desc_detalhada}
 
                 QUADRO LEGISLATIVO VIGENTE (OBRIGATÓRIO FUNDAMENTAR COM ESTES DIPLOMAS):
@@ -618,8 +637,8 @@ with tabs[7]:
                 {matriz_sancionatoria}
 
                 ESTRUTURA OBRIGATÓRIA DO DOCUMENTO:
-                1. **OBJETIVO**: Análise da conformidade legal e regimes de servidão administrativa.
-                2. **DESCRIÇÃO TÉCNICA**: Relatar pormenorizadamente as ações observadas no terreno, confrontando com os requisitos da Portaria 419/2012 (REN) ou 162/2011 (RAN).
+                1. **OBJETIVO**: Análise da conformidade legal face ao Auto de Notícia e regimes de servidão administrativa.
+                2. **DESCRIÇÃO TÉCNICA E AUDITORIA**: Relatar as ações observadas no terreno (cruzando o Auto de Notícia com as observações), confrontando com os requisitos da Portaria 419/2012 (REN) ou 162/2011 (RAN).
                 3. **FUNDAMENTAÇÃO JURÍDICA E TRANSGRESSÕES**:
                    - Identificar as normas violadas em cada regime ativo (RAN, REN, Natura 2000, Património, Recursos Hídricos, PDM).
                    - Para a REN: Citar obrigatoriamente o DL 166/2008 na redação do DL 123/2024.
@@ -640,7 +659,7 @@ with tabs[7]:
                 
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Informação Técnica e Análise de Viabilidade geradas!")
+                    st.success("Informação Técnica e Análise de Viabilidade geradas com sucesso!")
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                     st.write(res)
                 except Exception as e:
