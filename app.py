@@ -543,9 +543,44 @@ with tabs[7]:
             with st.spinner("A analisar Auto de Notícia e conformidade legal transversal..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
-                # --- EXTRAÇÃO DE TEXTO DO AUTO DE NOTÍCIA ---
+                # --- 1. SEGURANÇA CONTRA NAMEERROR (INICIALIZAÇÃO DE VARIÁVEIS) ---
+                # Garante que as variáveis existem para o prompt, mesmo que os separadores não tenham sido abertos
+                v_ren = {
+                    'sel_ren': locals().get('sel_ren', []),
+                    'p419_materiais': locals().get('p419_materiais', False),
+                    'p419_relevo': locals().get('p419_relevo', False),
+                    'p419_drenagem': locals().get('p419_drenagem', False)
+                }
+                
+                v_ran = {
+                    'sel_inter_ran': locals().get('sel_inter_ran', []),
+                    'sel_util_ran': locals().get('sel_util_ran', []),
+                    'viola_ati': locals().get('viola_ati', False),
+                    'falta_parecer_ran': locals().get('falta_parecer_ran', False),
+                    'viola_permeabilidade': locals().get('viola_permeabilidade', False),
+                    'falta_alternativa': locals().get('falta_alternativa', False)
+                }
+
+                v_natura = {
+                    'sel_zec': locals().get('sel_zec', []),
+                    'sel_rnap': locals().get('sel_rnap', []),
+                    'sel_art9': locals().get('sel_art9', []),
+                    'sel_zon': locals().get('sel_zon', [])
+                }
+
+                v_pat = {
+                    'sel_pat_int': locals().get('sel_pat_int', []),
+                    'sel_pat_cond': locals().get('sel_pat_cond', []),
+                    'sel_pat_dev': locals().get('sel_pat_dev', [])
+                }
+
+                v_rh = {
+                    'sel_rh_int': locals().get('sel_rh_int', []),
+                    'sel_rh_cond': locals().get('sel_rh_cond', [])
+                }
+
+                # --- 2. EXTRAÇÃO DE TEXTO DO AUTO DE NOTÍCIA ---
                 texto_auto_noticia = ""
-                # upload_auto deve estar definido no separador Identificação
                 if 'auto_noticia_pdf' in st.session_state and st.session_state.auto_noticia_pdf:
                     try:
                         reader_auto = PdfReader(st.session_state.auto_noticia_pdf)
@@ -553,37 +588,30 @@ with tabs[7]:
                     except Exception as e:
                         texto_auto_noticia = f"Erro na leitura do Auto de Notícia: {e}"
 
-                # 0. Preparação do Quadro Legislativo para a IA
+                # --- 3. PREPARAÇÃO DO QUADRO LEGISLATIVO PARA A IA ---
                 legis_ref_text = ""
-                # QUADRO_LEGAL_REF deve estar definido na secção de Base de Dados
                 for cat, leis in QUADRO_LEGAL_REF.items():
                     legis_ref_text += f"\n- {cat}: " + " | ".join(leis)
 
-                # 1. Contexto Natura 2000
-                contexto_natura = ""
-                if incide_natura:
-                    contexto_natura = f"""
-                    REDE NATURA 2000 / ÁREAS PROTEGIDAS:
-                    - Sítios ZEC/ZPE: {sel_zec}
-                    - Áreas Protegidas (RNAP): {sel_rnap}
-                    - Condicionantes Art. 9.º n.º 2 (DL 140/99): {sel_art9}
-                    - Zonamento: {sel_zon}
-                    """
+                # --- 4. CONSTRUÇÃO DOS CONTEXTOS PARA O PROMPT ---
+                contexto_natura = f"""
+                REDE NATURA 2000 / ÁREAS PROTEGIDAS:
+                - Sítios ZEC/ZPE: {v_natura['sel_zec']}
+                - Áreas Protegidas (RNAP): {v_natura['sel_rnap']}
+                - Condicionantes Art. 9.º n.º 2 (DL 140/99): {v_natura['sel_art9']}
+                - Zonamento: {v_natura['sel_zon']}
+                """ if incide_natura else "N/A"
 
-                # 2. Contexto RAN (DL 73/2009 e Portaria 162/2011)
-                contexto_ran = ""
-                if incide_ran:
-                    contexto_ran = f"""
-                    RESERVA AGRÍCOLA NACIONAL (RAN):
-                    - Ações Interditas Selecionadas (Texto Integral Art. 21.º): {sel_inter_ran}
-                    - Pretensão de Uso Selecionada (Texto Integral Art. 22.º): {sel_util_ran}
-                    - Incumprimentos Técnicos (Portaria 162/2011): 
-                        * Violação de Áreas Máximas (ATI): {viola_ati}
-                        * Falta de Parecer Prévio Vinculativo: {falta_parecer_ran}
-                        * Inexistência de Prova de Alternativa: {falta_alternativa if 'falta_alternativa' in locals() else 'Não especificado'}
-                    """
+                contexto_ran = f"""
+                RESERVA AGRÍCOLA NACIONAL (RAN):
+                - Ações Interditas Selecionadas (Art. 21.º): {v_ran['sel_inter_ran']}
+                - Pretensão de Uso Selecionada (Art. 22.º): {v_ran['sel_util_ran']}
+                - Incumprimentos Técnicos (Portaria 162/2011): 
+                    * Violação de Áreas Máximas (ATI): {v_ran['viola_ati']}
+                    * Falta de Parecer Prévio Vinculativo: {v_ran['falta_parecer_ran']}
+                    * Inexistência de Prova de Alternativa: {v_ran['falta_alternativa']}
+                """ if incide_ran else "N/A"
 
-                # 3. Contexto PDM com Extração de Regulamento
                 contexto_pdm_texto = ""
                 if incide_pdm:
                     texto_regulamento = ""
@@ -596,28 +624,21 @@ with tabs[7]:
                     
                     contexto_pdm_texto = f"""
                     ORDENAMENTO DO TERRITÓRIO (PDM):
-                    - Classe de Solo: {sel_pdm}
-                    - Conformidade: {confo_pdm}
-                    - Artigo do Regulamento: {artigo_pdm}
-                    - Análise Técnica: {desc_pdm}
+                    - Classe de Solo: {locals().get('sel_pdm', [])}
+                    - Conformidade: {locals().get('confo_pdm', 'N/A')}
+                    - Artigo do Regulamento: {locals().get('artigo_pdm', '')}
+                    - Análise Técnica: {locals().get('desc_pdm', '')}
                     - Extrato do Regulamento: {texto_regulamento[:2000]}...
                     """
 
-                # 4. Contextos Adicionais (Património, Recursos Hídricos e Critérios REN Portaria 419/2012)
-                contexto_patrimonio = f"PATRIMÓNIO: {sel_pat_int + sel_pat_cond if incide_patrimonio else 'N/A'}"
-                contexto_rh = f"RECURSOS HÍDRICOS: {sel_rh_int + sel_rh_cond if incide_rh else 'N/A'}"
-                
-                contexto_tecnico_ren = ""
-                if incide_ren:
-                    contexto_tecnico_ren = f"""
-                    CRITÉRIOS TÉCNICOS REN (Portaria 419/2012):
-                    - Uso de materiais impermeáveis: {p419_materiais if 'p419_materiais' in locals() else 'N/A'}
-                    - Modelação de terreno/relevo: {p419_relevo if 'p419_relevo' in locals() else 'N/A'}
-                    - Alteração de drenagem natural: {p419_drenagem if 'p419_drenagem' in locals() else 'N/A'}
-                    """
+                contexto_tecnico_ren = f"""
+                CRITÉRIOS TÉCNICOS REN (Portaria 419/2012):
+                - Uso de materiais impermeáveis: {v_ren['p419_materiais']}
+                - Modelação de terreno/relevo: {v_ren['p419_relevo']}
+                - Alteração de drenagem natural: {v_ren['p419_drenagem']}
+                """ if incide_ren else "N/A"
 
-                # 5. Recuperação Segura da Descrição Manual (Evita AttributeError)
-                # Tenta obter o valor da área de texto ou do estado inicial
+                # 5. Recuperação Segura da Descrição Manual
                 desc_manual = st.session_state.get('desc_input', st.session_state.get('desc_detalhada', 'Sem descrição adicional.'))
 
                 prompt = f"""
@@ -629,7 +650,7 @@ with tabs[7]:
 
                 DADOS DO INFRACTOR E LOCAL:
                 - Localidade: {local} (Coordenadas: {lat}/{lon}). Área afetada: {area_m2}m2.
-                - Interessado: {inf_nome}, NIF: {inf_nif if 'inf_nif' in locals() else 'N/A'}, Tipo: {tipo_ent}.
+                - Interessado: {inf_nome}, NIF: {locals().get('inf_nif', 'N/A')}, Tipo: {tipo_ent}.
 
                 DESCRIÇÃO MANUAL DOS FACTOS (COMPLEMENTAR AO AUTO):
                 {desc_manual}
@@ -638,12 +659,11 @@ with tabs[7]:
                 {legis_ref_text}
 
                 MATRIZ LEGAL DE ANÁLISE ESPECÍFICA:
-                - REN (DL 166/2008 redação DL 123/2024): {sel_ren if incide_ren else 'N/A'}.
+                - REN (DL 166/2008 redação DL 123/2024): {v_ren['sel_ren'] if incide_ren else 'N/A'}.
                 {contexto_tecnico_ren}
                 {contexto_ran}
                 {contexto_natura}
-                - {contexto_patrimonio}
-                - {contexto_rh}
+                - PATRIMÓNIO: {v_pat['sel_pat_int']} | RECURSOS HÍDRICOS: {v_rh['sel_rh_int']}
                 {contexto_pdm_texto}
 
                 VALORES DE COIMAS PARA ENQUADRAMENTO (LEI 50/2006 ATUALIZADA PELO DL 87/2024):
@@ -665,7 +685,7 @@ with tabs[7]:
                    - Apresentar a moldura das coimas em abstrato para o infrator ({tipo_ent}), citando a Lei 50/2006 com as alterações do DL 87/2024.
                 6. **PARECER FINAL E MEDIDAS DE REPOSIÇÃO**:
                    - Se legalizável: Indicar os termos e passos necessários (ex: taxas, pareceres).
-                   - Se não legalizável: Propor medidas imediatas ({sel_medidas}), cessação de ações (Artigo 43.º RJREN) e reposição da legalidade/situação anterior (Artigo 44.º RJRAN).
+                   - Se não legalizável: Propor medidas imediatas ({locals().get('sel_medidas', [])}), cessação de ações (Artigo 43.º RJREN) e reposição da legalidade/situação anterior (Artigo 44.º RJRAN).
 
                 ESTILO: Jurídico, formal, Português de Portugal (PT-PT). Capítulos a BOLD.
                 """
