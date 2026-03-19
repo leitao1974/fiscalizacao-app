@@ -10,9 +10,13 @@ from pypdf import PdfReader
 # 1. Configuração de Interface
 st.set_page_config(page_title="Fiscalização Pro: Matriz Legal Total", layout="wide", page_icon="🛡️")
 
-# No topo do script, após as importações
+# No topo do script, logo após as importações
 if 'desc_detalhada' not in st.session_state:
-    desc_detalhada = ""
+    st.session_state['desc_detalhada'] = ""
+
+# Função para atualizar o estado (Callback)
+def update_desc():
+    st.session_state.desc_detalhada = st.session_state.desc_input
 
 st.markdown("""
     <style>
@@ -319,10 +323,13 @@ with tabs[0]:
         if upload_auto:
             st.info("✅ Documento carregado. A IA irá cruzar os dados do Auto com a Matriz Legal.")
         
+        # Substitua o text_area antigo por este:
         st.session_state.desc_detalhada = st.text_area(
             "📝 Observações Adicionais", 
-            value=st.session_state.desc_detalhada,
-            placeholder="Descreva factos complementares não constantes no Auto..."
+            value=st.session_state.get('desc_detalhada', ""),
+            placeholder="Descreva factos complementares não constantes no Auto...",
+            key="desc_input",
+            on_change=None # O Streamlit gere o estado automaticamente via key
         )
 
 with tabs[1]:
