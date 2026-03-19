@@ -37,6 +37,36 @@ if api_key:
 
 # --- BASE DE DADOS CONSOLIDADAS ---
 
+# --- 📚 MATRIZ LEGISLATIVA CONSOLIDADA (2024-2026) ---
+# Referência central para fundamentação jurídica automática
+QUADRO_LEGAL_REF = {
+    "REN": [
+        "Decreto-Lei n.º 166/2008, de 22 de Agosto (Regime Jurídico da REN)",
+        "Decreto-Lei n.º 239/2012, de 2 de novembro (1.ª alteração)",
+        "Decreto-Lei n.º 124/2019, de 28 de agosto (Alteração e Republicação)",
+        "Decreto-Lei n.º 124/2019 com alterações do DL n.º 123/2024, de 31 de Dezembro (Vigente)",
+        "Portaria n.º 419/2012, de 20 de dezembro (Condições e Requisitos Técnicos)"
+    ],
+    "RAN": [
+        "Decreto-Lei n.º 73/2009, de 31 de Março (Regime Jurídico da RAN)",
+        "Decreto-Lei n.º 199/2015, de 16 de setembro (Alteração)",
+        "Portaria n.º 162/2011, de 18 de Abril (Utilizações não agrícolas)"
+    ],
+    "NATURA 2000": [
+        "Decreto-Lei n.º 140/99, de 24 de Abril (Regime Jurídico)",
+        "Decreto-Lei n.º 49/2005 de 24 de Fevereiro (Alteração)",
+        "Decreto-Lei n.º 169/2001, de 25 de maio (Redação atual)"
+    ],
+    "ORDENAMENTO": [
+        "Decreto-Lei n.º 80/2015 (RJIGT - Regime Jurídico das IG Território)",
+        "Decreto-Lei n.º 555/99 (RJUE - Regime Jurídico da Urbanização e Edificação)"
+    ],
+    "CONTRAORDENAÇÕES": [
+        "Lei n.º 50/2006, de 29 de agosto (Lei Quadro das Contraordenações Ambientais)",
+        "Alterações: Lei 89/2009, Decl. Ret. 70/2009, Lei 114/2015, DL 42-A/2016, Lei 25/2019 e DL 87/2024 (Vigente)"
+    ]
+}
+
 # 💧 REN - TIPOLOGIAS DETALHADAS (DL 239/2012)
 ren_litoral_dict = {
     "Faixa marítima de proteção costeira": "Linha do leito até batimétrica dos 30m",
@@ -289,14 +319,17 @@ with tabs[0]:
         desc_detalhada = st.text_area("📝 Descrição Detalhada dos Factos", placeholder="Descreva o que observou no terreno...")
 
 with tabs[1]:
-    # Interruptor mestre para REN
+    # Interruptor mestre para REN - Atualizado com DL 123/2024
     incide_ren = st.toggle("🚨 A infração localiza-se em área de REN?", key="switch_ren")
     
     if incide_ren:
-        st.info("**Regime Jurídico da REN (DL 166/2008 atualizado pelo DL 239/2012)**")
+        st.info("**Regime Jurídico da REN:** Decreto-Lei n.º 166/2008, com a redação atualizada pelo **Decreto-Lei n.º 123/2024, de 31 de dezembro**.")
+        
         col_t1, col_t2 = st.columns(2)
+        
         with col_t1:
             st.subheader("1. Tipologias da REN")
+            # Mantém as expansões de tipologias existentes
             with st.expander("🌊 Áreas de Proteção do Litoral"):
                 sel_litoral = st.multiselect("Subtipologias:", list(ren_litoral_dict.keys()), key="ren_litoral")
             with st.expander("💧 Ciclo Hidrológico Terrestre"):
@@ -305,18 +338,32 @@ with tabs[1]:
                 sel_riscos = st.multiselect("Subtipologias:", list(ren_riscos_dict.keys()), key="ren_riscos")
             
             sel_ren = sel_litoral + sel_hidro + sel_riscos
-            st.write("**Interdições Gerais Observadas:**")
+            
+            st.divider()
+            st.write("**Interdições Gerais Observadas (Art. 20.º):**")
             sel_inter_ren = [i for i in ren_interdicoes_gerais if st.checkbox(i, key=f"int_ren_{i}")]
+            
         with col_t2:
-            st.subheader("2. Regime de Controlo")
+            st.subheader("2. Regime de Controlo e Técnica")
             sel_regime_ren = st.radio("Enquadramento da Ação:", ren_regimes_controlo)
-            c_previa_ren = st.checkbox("Falta de Comunicação Prévia", key="cp_ren")
-            p_apa_ren = st.checkbox("Falta de Parecer/Autorização", key="p_ren")
-            lim_area_ren = st.checkbox("Violação de índices (Portaria 419/2012)", key="lim_ren")
+            
+            # Verificações de Conformidade Administrativa
+            c_previa_ren = st.checkbox("Falta de Comunicação Prévia (CCDR)", key="cp_ren")
+            p_apa_ren = st.checkbox("Falta de Parecer/Autorização (CCDR/APA)", key="p_ren")
+            
+            st.write("---")
+            # CRÍTICO: Verificações da Portaria n.º 419/2012 para o Prompt
+            st.write("**Verificação Técnica (Portaria n.º 419/2012):**")
+            p419_materiais = st.checkbox("Uso de materiais impermeáveis (Betão/Asfalto)", key="p419_mat")
+            p419_relevo = st.checkbox("Modelação do terreno / Escavações / Aterros", key="p419_rel")
+            p419_drenagem = st.checkbox("Alteração da rede de drenagem natural", key="p419_dren")
+            lim_area_ren = st.checkbox("Violação de índices de ocupação/áreas", key="lim_ren")
+
     else:
         st.warning("Área de REN não selecionada. Esta secção será omitida do relatório.")
         sel_ren, sel_inter_ren, sel_regime_ren = [], [], "N/A"
         c_previa_ren, p_apa_ren, lim_area_ren = False, False, False
+        p419_materiais, p419_relevo, p419_drenagem = False, False, False
 
 with tabs[2]:
     incide_natura = st.toggle("🌿 A infração localiza-se em Rede Natura 2000 / AP?", key="switch_natura")
@@ -337,34 +384,46 @@ with tabs[2]:
         sel_zec, sel_rnap, sel_art9, sel_zon = [], [], [], []
 
 with tabs[3]:
+    # Interruptor mestre para RAN - Referenciando a Matriz Legislativa Consolidada
     incide_ran = st.toggle("🌾 A infração localiza-se em área de RAN?", key="switch_ran")
     
     if incide_ran:
-        st.info("**Reserva Agrícola Nacional (Decreto-Lei n.º 73/2009 e republicação pelo DL 199/2015)**")
+        st.info("**Reserva Agrícola Nacional:** Decreto-Lei n.º 73/2009, republicado pelo Decreto-Lei n.º 199/2015.")
         col_r1, col_r2 = st.columns(2)
+        
         with col_r1:
-            st.subheader("1. Ações Interditas (Texto Integral Art. 21.º)")
+            st.subheader("1. Ações Interditas (Artigo 21.º)")
+            # Mapeamento das interdições conforme a Matriz Legal Integral
             sel_inter_ran = [k for k in ran_interdicoes_dict.keys() if st.checkbox(k, key=f'ran_int_{k[:5]}')]
             
-            st.subheader("2. Pretensão de Enquadramento (Art. 22.º)")
+            st.subheader("2. Pretensão de Enquadramento (Artigo 22.º)")
+            # Seleção baseada nas Utilizações Permitidas
             sel_util_ran = st.multiselect(
                 "Ação enquadrada em qual alínea de utilização permitida?", 
                 list(ran_utilizacoes_permitidas.keys()),
                 key="util_ran_sel"
             )
+            
         with col_r2:
-            st.subheader("3. Verificação de Limites (Portaria 162/2011)")
-            viola_ati = st.checkbox("Violação de Área (Excede 300m² para habitação ou 750m² para armazéns) [cite: 1449, 1474, 1600]")
-            falta_parecer_ran = st.checkbox("Falta de Parecer Prévio Vinculativo da Entidade Regional [cite: 267, 1063]")
-            viola_permeabilidade = st.checkbox("Uso de pavimentos não permeáveis em vias de acesso [cite: 1458]")
+            st.subheader("3. Verificação de Limites (Portaria n.º 162/2011)")
+            # Verificações técnicas fundamentais para o cálculo de viabilidade
+            viola_ati = st.checkbox("Violação de Área (Excede 300m² para habitação ou 750m² para armazéns)", key="v_ati")
+            falta_parecer_ran = st.checkbox("Falta de Parecer Prévio Vinculativo da Entidade Regional", key="f_parecer_ran")
+            viola_permeabilidade = st.checkbox("Uso de pavimentos não permeáveis em vias de acesso", key="v_perm_ran")
+            # Variável necessária para o prompt de viabilidade de legalização
+            falta_alternativa = st.checkbox("Inexistência de prova de falta de alternativa fora de RAN", key="f_alt_ran")
             
             st.write("---")
+            # Exibição dinâmica das condicionantes técnicas para apoio ao utilizador
             if sel_util_ran:
                 for util in sel_util_ran:
                     st.caption(f"🛡️ **Condicionante Técnica:** {ran_utilizacoes_permitidas[util]}")
     else:
-        st.warning("Área de RAN não selecionada.")
+        st.warning("Área de RAN não selecionada. Esta secção será omitida do relatório.")
+        # Definição de variáveis vazias para evitar NameError no motor de IA
         sel_inter_ran, sel_util_ran = [], []
+        viola_ati, falta_parecer_ran, viola_permeabilidade, falta_alternativa = False, False, False, False
+        
 with tabs[4]:
     incide_patrimonio = st.toggle("🏛️ A infração afeta Património Cultural?", key="switch_pat")
     if incide_patrimonio:
@@ -470,6 +529,11 @@ with tabs[7]:
             with st.spinner("A analisar conformidade legal e viabilidade de legalização transversal..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
+                # 0. Preparação do Quadro Legislativo para a IA
+                legis_ref_text = ""
+                for cat, leis in QUADRO_LEGAL_REF.items():
+                    legis_ref_text += f"\n- {cat}: " + " | ".join(leis)
+
                 # 1. Contexto Natura 2000
                 contexto_natura = ""
                 if incide_natura:
@@ -491,7 +555,7 @@ with tabs[7]:
                     - Incumprimentos Técnicos (Portaria 162/2011): 
                         * Violação de Áreas Máximas (ATI): {viola_ati}
                         * Falta de Parecer Prévio Vinculativo: {falta_parecer_ran}
-                        * Inexistência de Prova de Alternativa: {falta_alternativa}
+                        * Inexistência de Prova de Alternativa: {falta_alternativa if 'falta_alternativa' in locals() else 'Não especificado'}
                     """
 
                 # 3. Contexto PDM com Extração de Regulamento
@@ -501,7 +565,7 @@ with tabs[7]:
                     if upload_pdm:
                         try:
                             reader = PdfReader(upload_pdm)
-                            texto_regulamento = "\\n".join([page.extract_text() for page in reader.pages[:10]])
+                            texto_regulamento = "\n".join([page.extract_text() for page in reader.pages[:10]])
                         except Exception as e:
                             texto_regulamento = f"Erro na leitura do PDF: {e}"
                     
@@ -514,9 +578,18 @@ with tabs[7]:
                     - Extrato do Regulamento: {texto_regulamento[:2000]}...
                     """
 
-                # 4. Contextos Adicionais (Património e Recursos Hídricos)
+                # 4. Contextos Adicionais (Património, Recursos Hídricos e Critérios REN Portaria 419/2012)
                 contexto_patrimonio = f"PATRIMÓNIO: {sel_pat_int + sel_pat_cond if incide_patrimonio else 'N/A'}"
                 contexto_rh = f"RECURSOS HÍDRICOS: {sel_rh_int + sel_rh_cond if incide_rh else 'N/A'}"
+                
+                contexto_tecnico_ren = ""
+                if incide_ren:
+                    contexto_tecnico_ren = f"""
+                    CRITÉRIOS TÉCNICOS REN (Portaria 419/2012):
+                    - Uso de materiais impermeáveis: {p419_materiais if 'p419_materiais' in locals() else 'N/A'}
+                    - Modelação de terreno/relevo: {p419_relevo if 'p419_relevo' in locals() else 'N/A'}
+                    - Alteração de drenagem natural: {p419_drenagem if 'p419_drenagem' in locals() else 'N/A'}
+                    """
 
                 prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
@@ -524,27 +597,32 @@ with tabs[7]:
 
                 DADOS DO INFRACTOR E LOCAL:
                 - Localidade: {local} (Coordenadas: {lat}/{lon}). Área afetada: {area_m2}m2.
-                - Interessado: {inf_nome}, NIF: {inf_nif}, Tipo: {tipo_ent}.
+                - Interessado: {inf_nome}, NIF: {inf_nif if 'inf_nif' in locals() else 'N/A'}, Tipo: {tipo_ent}.
 
                 DESCRIÇÃO DOS FACTOS:
                 {desc_detalhada}
 
-                MATRIZ LEGAL DE ANÁLISE:
-                - REN: {sel_ren if incide_ren else 'N/A'}.
+                QUADRO LEGISLATIVO VIGENTE (OBRIGATÓRIO FUNDAMENTAR COM ESTES DIPLOMAS):
+                {legis_ref_text}
+
+                MATRIZ LEGAL DE ANÁLISE ESPECÍFICA:
+                - REN (DL 166/2008 redação DL 123/2024): {sel_ren if incide_ren else 'N/A'}.
+                {contexto_tecnico_ren}
                 {contexto_ran}
                 {contexto_natura}
                 - {contexto_patrimonio}
                 - {contexto_rh}
                 {contexto_pdm_texto}
 
-                VALORES DE COIMAS PARA ENQUADRAMENTO:
+                VALORES DE COIMAS PARA ENQUADRAMENTO (LEI 50/2006 ATUALIZADA PELO DL 87/2024):
                 {matriz_sancionatoria}
 
                 ESTRUTURA OBRIGATÓRIA DO DOCUMENTO:
                 1. **OBJETIVO**: Análise da conformidade legal e regimes de servidão administrativa.
-                2. **DESCRIÇÃO TÉCNICA**: Relatar pormenorizadamente as ações observadas no terreno.
+                2. **DESCRIÇÃO TÉCNICA**: Relatar pormenorizadamente as ações observadas no terreno, confrontando com os requisitos da Portaria 419/2012 (REN) ou 162/2011 (RAN).
                 3. **FUNDAMENTAÇÃO JURÍDICA E TRANSGRESSÕES**:
                    - Identificar as normas violadas em cada regime ativo (RAN, REN, Natura 2000, Património, Recursos Hídricos, PDM).
+                   - Para a REN: Citar obrigatoriamente o DL 166/2008 na redação do DL 123/2024.
                    - Para a RAN: Transcrever obrigatoriamente as alíneas do Artigo 21.º ou 22.º do DL 73/2009.
                 4. **ANÁLISE JURÍDICA DE VIABILIDADE DE LEGALIZAÇÃO (OBRIGATÓRIO)**:
                    - Analisar se a infração é suscetível de legalização face aos critérios de exceção de cada diploma.
@@ -552,10 +630,10 @@ with tabs[7]:
                    - Concluir explicitamente se a ação é "Legalizável" ou "Insuscetível de Legalização".
                 5. **QUADRO SANCIONATÓRIO E NULIDADES**:
                    - Mencionar a NULIDADE de licenciamentos administrativos que violem a RAN (Artigo 38.º do DL 73/2009) ou o Património (Artigo 5.º da Lei 107/2001).
-                   - Apresentar a moldura das coimas em abstrato para o infrator ({tipo_ent}), citando os valores mínimos e máximos da matriz legal fornecida.
+                   - Apresentar a moldura das coimas em abstrato para o infrator ({tipo_ent}), citando a Lei 50/2006 com as alterações do DL 87/2024.
                 6. **PARECER FINAL E MEDIDAS DE REPOSIÇÃO**:
                    - Se legalizável: Indicar os termos e passos necessários (ex: taxas, pareceres).
-                   - Se não legalizável: Propor medidas imediatas ({sel_medidas}), cessação de ações (Artigo 43.º) e reposição da legalidade/situação anterior (Artigo 44.º do RJran).
+                   - Se não legalizável: Propor medidas imediatas ({sel_medidas}), cessação de ações (Artigo 43.º RJREN) e reposição da legalidade/situação anterior (Artigo 44.º RJRAN).
 
                 ESTILO: Jurídico, formal, Português de Portugal (PT-PT). Capítulos a BOLD.
                 """
