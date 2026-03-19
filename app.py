@@ -543,17 +543,19 @@ with tabs[7]:
             with st.spinner("A analisar Auto de Notícia e conformidade legal transversal..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
-                # --- EXTRAÇÃO DE TEXTO DO AUTO DE NOTÍCIA (NOVO) ---
+                # --- EXTRAÇÃO DE TEXTO DO AUTO DE NOTÍCIA ---
                 texto_auto_noticia = ""
-                if upload_auto: # Variável definida no separador Identificação
+                # upload_auto deve estar definido no separador Identificação
+                if 'auto_noticia_pdf' in st.session_state and st.session_state.auto_noticia_pdf:
                     try:
-                        reader_auto = PdfReader(upload_auto)
+                        reader_auto = PdfReader(st.session_state.auto_noticia_pdf)
                         texto_auto_noticia = "\n".join([page.extract_text() for page in reader_auto.pages])
                     except Exception as e:
                         texto_auto_noticia = f"Erro na leitura do Auto de Notícia: {e}"
 
                 # 0. Preparação do Quadro Legislativo para a IA
                 legis_ref_text = ""
+                # QUADRO_LEGAL_REF deve estar definido na secção de Base de Dados
                 for cat, leis in QUADRO_LEGAL_REF.items():
                     legis_ref_text += f"\n- {cat}: " + " | ".join(leis)
 
@@ -585,9 +587,9 @@ with tabs[7]:
                 contexto_pdm_texto = ""
                 if incide_pdm:
                     texto_regulamento = ""
-                    if upload_pdm:
+                    if 'pdm_reg_upload' in st.session_state and st.session_state.pdm_reg_upload:
                         try:
-                            reader = PdfReader(upload_pdm)
+                            reader = PdfReader(st.session_state.pdm_reg_upload)
                             texto_regulamento = "\n".join([page.extract_text() for page in reader.pages[:10]])
                         except Exception as e:
                             texto_regulamento = f"Erro na leitura do PDF: {e}"
@@ -614,6 +616,10 @@ with tabs[7]:
                     - Alteração de drenagem natural: {p419_drenagem if 'p419_drenagem' in locals() else 'N/A'}
                     """
 
+                # 5. Recuperação Segura da Descrição Manual (Evita AttributeError)
+                # Tenta obter o valor da área de texto ou do estado inicial
+                desc_manual = st.session_state.get('desc_input', st.session_state.get('desc_detalhada', 'Sem descrição adicional.'))
+
                 prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
                 O teu objetivo é auditar um Auto de Notícia e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada que determine a VIABILIDADE DE LEGALIZAÇÃO.
@@ -626,7 +632,7 @@ with tabs[7]:
                 - Interessado: {inf_nome}, NIF: {inf_nif if 'inf_nif' in locals() else 'N/A'}, Tipo: {tipo_ent}.
 
                 DESCRIÇÃO MANUAL DOS FACTOS (COMPLEMENTAR AO AUTO):
-                {desc_detalhada}
+                {desc_manual}
 
                 QUADRO LEGISLATIVO VIGENTE (OBRIGATÓRIO FUNDAMENTAR COM ESTES DIPLOMAS):
                 {legis_ref_text}
