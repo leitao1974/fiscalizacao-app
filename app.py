@@ -333,17 +333,14 @@ with tabs[0]:
         )
 
 with tabs[1]:
-    # Interruptor mestre para REN - Atualizado com DL 123/2024
     incide_ren = st.toggle("🚨 A infração localiza-se em área de REN?", key="switch_ren")
     
     if incide_ren:
-        st.info("**Regime Jurídico da REN:** Decreto-Lei n.º 166/2008, com a redação atualizada pelo **Decreto-Lei n.º 123/2024, de 31 de dezembro**.")
+        st.info("**Regime Jurídico da REN:** Decreto-Lei n.º 166/2008, com a redação atualizada pelo **Decreto-Lei n.º 123/2024**.")
         
-        col_t1, col_t2 = st.columns(2)
-        
-        with col_t1:
+        c1, c2 = st.columns([1, 1])
+        with c1:
             st.subheader("1. Tipologias da REN")
-            # Mantém as expansões de tipologias existentes
             with st.expander("🌊 Áreas de Proteção do Litoral"):
                 sel_litoral = st.multiselect("Subtipologias:", list(ren_litoral_dict.keys()), key="ren_litoral")
             with st.expander("💧 Ciclo Hidrológico Terrestre"):
@@ -352,32 +349,15 @@ with tabs[1]:
                 sel_riscos = st.multiselect("Subtipologias:", list(ren_riscos_dict.keys()), key="ren_riscos")
             
             sel_ren = sel_litoral + sel_hidro + sel_riscos
-            
-            st.divider()
-            st.write("**Interdições Gerais Observadas (Art. 20.º):**")
+
+        with c2:
+            st.subheader("2. Interdições Observadas (Art. 20.º)")
             sel_inter_ren = [i for i in ren_interdicoes_gerais if st.checkbox(i, key=f"int_ren_{i}")]
             
-        with col_t2:
-            st.subheader("2. Regime de Controlo e Técnica")
-            sel_regime_ren = st.radio("Enquadramento da Ação:", ren_regimes_controlo)
-            
-            # Verificações de Conformidade Administrativa
-            c_previa_ren = st.checkbox("Falta de Comunicação Prévia (CCDR)", key="cp_ren")
-            p_apa_ren = st.checkbox("Falta de Parecer/Autorização (CCDR/APA)", key="p_ren")
-            
-            st.write("---")
-            # CRÍTICO: Verificações da Portaria n.º 419/2012 para o Prompt
-            st.write("**Verificação Técnica (Portaria n.º 419/2012):**")
-            p419_materiais = st.checkbox("Uso de materiais impermeáveis (Betão/Asfalto)", key="p419_mat")
-            p419_relevo = st.checkbox("Modelação do terreno / Escavações / Aterros", key="p419_rel")
-            p419_drenagem = st.checkbox("Alteração da rede de drenagem natural", key="p419_dren")
-            lim_area_ren = st.checkbox("Violação de índices de ocupação/áreas", key="lim_ren")
-
+            st.caption("ℹ️ O Regime de Controlo e os requisitos da Portaria 419/2012 serão determinados automaticamente pela IA.")
     else:
-        st.warning("Área de REN não selecionada. Esta secção será omitida do relatório.")
-        sel_ren, sel_inter_ren, sel_regime_ren = [], [], "N/A"
-        c_previa_ren, p_apa_ren, lim_area_ren = False, False, False
-        p419_materiais, p419_relevo, p419_drenagem = False, False, False
+        st.warning("Área de REN não selecionada.")
+        sel_ren, sel_inter_ren = [], []
 
 with tabs[2]:
     incide_natura = st.toggle("🌿 A infração localiza-se em Rede Natura 2000 / AP?", key="switch_natura")
@@ -540,16 +520,13 @@ with tabs[7]:
         if not api_key:
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A analisar Auto de Notícia e conformidade legal transversal..."):
+            with st.spinner("A analisar Auto de Notícia e legislação vigente (2024-2026)..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
                 # --- 1. SEGURANÇA CONTRA NAMEERROR (INICIALIZAÇÃO DE VARIÁVEIS) ---
-                # Garante que as variáveis existem para o prompt, mesmo que os separadores não tenham sido abertos
                 v_ren = {
                     'sel_ren': locals().get('sel_ren', []),
-                    'p419_materiais': locals().get('p419_materiais', False),
-                    'p419_relevo': locals().get('p419_relevo', False),
-                    'p419_drenagem': locals().get('p419_drenagem', False)
+                    'sel_inter_ren': locals().get('sel_inter_ren', [])
                 }
                 
                 v_ran = {
@@ -594,105 +571,65 @@ with tabs[7]:
                     legis_ref_text += f"\n- {cat}: " + " | ".join(leis)
 
                 # --- 4. CONSTRUÇÃO DOS CONTEXTOS PARA O PROMPT ---
+                # Instrução específica para IA verificar Portaria 419/2012 e Regime de Controlo automaticamente
+                contexto_ia_audit = """
+                ⚠️ INSTRUÇÃO DE AUDITORIA AUTOMÁTICA:
+                - Deves determinar o REGIME DE CONTROLO (Isento, Comunicação Prévia, Autorização ou RIP) com base no DL 166/2008 (v. 123/2024).
+                - Deves verificar o cumprimento dos REQUISITOS TÉCNICOS da Portaria 419/2012 (permeabilidade, modelação e drenagem) analisando o texto do Auto e as interdições selecionadas.
+                """
+
                 contexto_natura = f"""
                 REDE NATURA 2000 / ÁREAS PROTEGIDAS:
-                - Sítios ZEC/ZPE: {v_natura['sel_zec']}
-                - Áreas Protegidas (RNAP): {v_natura['sel_rnap']}
-                - Condicionantes Art. 9.º n.º 2 (DL 140/99): {v_natura['sel_art9']}
-                - Zonamento: {v_natura['sel_zon']}
+                - Sítios ZEC/ZPE: {v_natura['sel_zec']} | RNAP: {v_natura['sel_rnap']}
+                - Condicionantes Art. 9.º n.º 2: {v_natura['sel_art9']}
                 """ if incide_natura else "N/A"
 
                 contexto_ran = f"""
                 RESERVA AGRÍCOLA NACIONAL (RAN):
-                - Ações Interditas Selecionadas (Art. 21.º): {v_ran['sel_inter_ran']}
-                - Pretensão de Uso Selecionada (Art. 22.º): {v_ran['sel_util_ran']}
-                - Incumprimentos Técnicos (Portaria 162/2011): 
-                    * Violação de Áreas Máximas (ATI): {v_ran['viola_ati']}
-                    * Falta de Parecer Prévio Vinculativo: {v_ran['falta_parecer_ran']}
-                    * Inexistência de Prova de Alternativa: {v_ran['falta_alternativa']}
+                - Ações Interditas (Art. 21.º): {v_ran['sel_inter_ran']}
+                - Utilizações Permitidas (Art. 22.º): {v_ran['sel_util_ran']}
+                - Verificação Portaria 162/2011: ATI excede limites? {v_ran['viola_ati']} | Sem parecer? {v_ran['falta_parecer_ran']}
                 """ if incide_ran else "N/A"
-
-                contexto_pdm_texto = ""
-                if incide_pdm:
-                    texto_regulamento = ""
-                    if 'pdm_reg_upload' in st.session_state and st.session_state.pdm_reg_upload:
-                        try:
-                            reader = PdfReader(st.session_state.pdm_reg_upload)
-                            texto_regulamento = "\n".join([page.extract_text() for page in reader.pages[:10]])
-                        except Exception as e:
-                            texto_regulamento = f"Erro na leitura do PDF: {e}"
-                    
-                    contexto_pdm_texto = f"""
-                    ORDENAMENTO DO TERRITÓRIO (PDM):
-                    - Classe de Solo: {locals().get('sel_pdm', [])}
-                    - Conformidade: {locals().get('confo_pdm', 'N/A')}
-                    - Artigo do Regulamento: {locals().get('artigo_pdm', '')}
-                    - Análise Técnica: {locals().get('desc_pdm', '')}
-                    - Extrato do Regulamento: {texto_regulamento[:2000]}...
-                    """
-
-                contexto_tecnico_ren = f"""
-                CRITÉRIOS TÉCNICOS REN (Portaria 419/2012):
-                - Uso de materiais impermeáveis: {v_ren['p419_materiais']}
-                - Modelação de terreno/relevo: {v_ren['p419_relevo']}
-                - Alteração de drenagem natural: {v_ren['p419_drenagem']}
-                """ if incide_ren else "N/A"
 
                 # 5. Recuperação Segura da Descrição Manual
                 desc_manual = st.session_state.get('desc_input', st.session_state.get('desc_detalhada', 'Sem descrição adicional.'))
 
                 prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
-                O teu objetivo é auditar um Auto de Notícia e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada que determine a VIABILIDADE DE LEGALIZAÇÃO.
+                O teu objetivo é auditar um Auto de Notícia e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA.
 
-                DADOS DO AUTO DE NOTÍCIA CARREGADO (BASE DE ANÁLISE):
-                {texto_auto_noticia if texto_auto_noticia else "Nenhum PDF de Auto de Notícia carregado. Basear exclusivamente nos factos descritos manualmente."}
+                {contexto_ia_audit}
 
-                DADOS DO INFRACTOR E LOCAL:
-                - Localidade: {local} (Coordenadas: {lat}/{lon}). Área afetada: {area_m2}m2.
-                - Interessado: {inf_nome}, NIF: {locals().get('inf_nif', 'N/A')}, Tipo: {tipo_ent}.
+                DADOS DO AUTO DE NOTÍCIA (BASE DE ANÁLISE):
+                {texto_auto_noticia if texto_auto_noticia else "Nenhum PDF carregado. Usar factos manuais."}
 
-                DESCRIÇÃO MANUAL DOS FACTOS (COMPLEMENTAR AO AUTO):
+                DESCRIÇÃO MANUAL COMPLEMENTAR:
                 {desc_manual}
 
-                QUADRO LEGISLATIVO VIGENTE (OBRIGATÓRIO FUNDAMENTAR COM ESTES DIPLOMAS):
-                {legis_ref_text}
-
-                MATRIZ LEGAL DE ANÁLISE ESPECÍFICA:
-                - REN (DL 166/2008 redação DL 123/2024): {v_ren['sel_ren'] if incide_ren else 'N/A'}.
-                {contexto_tecnico_ren}
+                MATRIZ LEGAL DE APOIO:
+                - REN (DL 166/2008 v. 123/2024): {v_ren['sel_ren']}
+                - Interdições REN detetadas: {v_ren['sel_inter_ren']}
                 {contexto_ran}
                 {contexto_natura}
                 - PATRIMÓNIO: {v_pat['sel_pat_int']} | RECURSOS HÍDRICOS: {v_rh['sel_rh_int']}
-                {contexto_pdm_texto}
 
-                VALORES DE COIMAS PARA ENQUADRAMENTO (LEI 50/2006 ATUALIZADA PELO DL 87/2024):
-                {matriz_sancionatoria}
+                QUADRO LEGISLATIVO VIGENTE:
+                {legis_ref_text}
 
-                ESTRUTURA OBRIGATÓRIA DO DOCUMENTO:
-                1. **OBJETIVO**: Análise da conformidade legal face ao Auto de Notícia e regimes de servidão administrativa.
-                2. **DESCRIÇÃO TÉCNICA E AUDITORIA**: Relatar as ações observadas no terreno (cruzando o Auto de Notícia com as observações), confrontando com os requisitos da Portaria 419/2012 (REN) ou 162/2011 (RAN).
-                3. **FUNDAMENTAÇÃO JURÍDICA E TRANSGRESSÕES**:
-                   - Identificar as normas violadas em cada regime ativo (RAN, REN, Natura 2000, Património, Recursos Hídricos, PDM).
-                   - Para a REN: Citar obrigatoriamente o DL 166/2008 na redação do DL 123/2024.
-                   - Para a RAN: Transcrever obrigatoriamente as alíneas do Artigo 21.º ou 22.º do DL 73/2009.
-                4. **ANÁLISE JURÍDICA DE VIABILIDADE DE LEGALIZAÇÃO (OBRIGATÓRIO)**:
-                   - Analisar se a infração é suscetível de legalização face aos critérios de exceção de cada diploma.
-                   - Verificar se a pretensão cumpre os requisitos cumulativos (ex: Art. 22.º da RAN e limites da Portaria 162/2011).
-                   - Concluir explicitamente se a ação é "Legalizável" ou "Insuscetível de Legalização".
-                5. **QUADRO SANCIONATÓRIO E NULIDADES**:
-                   - Mencionar a NULIDADE de licenciamentos administrativos que violem a RAN (Artigo 38.º do DL 73/2009) ou o Património (Artigo 5.º da Lei 107/2001).
-                   - Apresentar a moldura das coimas em abstrato para o infrator ({tipo_ent}), citando a Lei 50/2006 com as alterações do DL 87/2024.
-                6. **PARECER FINAL E MEDIDAS DE REPOSIÇÃO**:
-                   - Se legalizável: Indicar os termos e passos necessários (ex: taxas, pareceres).
-                   - Se não legalizável: Propor medidas imediatas ({locals().get('sel_medidas', [])}), cessação de ações (Artigo 43.º RJREN) e reposição da legalidade/situação anterior (Artigo 44.º RJRAN).
+                ESTRUTURA OBRIGATÓRIA:
+                1. **OBJETIVO**: Análise face ao Auto de Notícia e regimes de servidão.
+                2. **AUDITORIA TÉCNICA (PORTARIA 419/2012)**: Deves analisar se a ação viola os requisitos de permeabilidade e solo.
+                3. **REGIME DE CONTROLO**: Identificar o enquadramento administrativo correto (Art. 20.º ou 21.º do RJREN).
+                4. **FUNDAMENTAÇÃO JURÍDICA E TRANSGRESSÕES**: Identificar normas violadas (DL 166/2008 v. 123/2024, DL 73/2009, etc).
+                5. **ANÁLISE DE VIABILIDADE**: Concluir se é legalizável ou insuscetível de legalização.
+                6. **QUADRO SANCIONATÓRIO**: Aplicar coimas da Lei 50/2006 (atualizada pelo DL 87/2024).
 
-                ESTILO: Jurídico, formal, Português de Portugal (PT-PT). Capítulos a BOLD.
+                ESTILO: Jurídico, formal, PT-PT. Capítulos a BOLD.
                 """
                 
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Informação Técnica e Análise de Viabilidade geradas com sucesso!")
+                    st.success("Informação Técnica gerada com Auditoria Legal Automática!")
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                     st.write(res)
                 except Exception as e:
