@@ -306,32 +306,30 @@ with tabs[0]:
     c1, c2 = st.columns(2)
     with c1:
         st.subheader("📍 Localização e GPS")
-        local = st.text_input("Localização/Concelho", "Região Centro")
+        local = st.text_input("Localização/Concelho", "Região Centro", key="loc_val")
         col_gps1, col_gps2 = st.columns(2)
-        lat = col_gps1.text_input("Latitude", placeholder="39.xxxx")
-        lon = col_gps2.text_input("Longitude", placeholder="-8.xxxx")
-        area_m2 = st.number_input("Área Afetada (m²)", value=1000.0)
-        fotos = st.file_uploader("📸 Fotos", accept_multiple_files=True, type=['jpg', 'jpeg', 'png'])
+        lat = col_gps1.text_input("Latitude", placeholder="39.xxxx", key="lat_val")
+        lon = col_gps2.text_input("Longitude", placeholder="-8.xxxx", key="lon_val")
+        area_m2 = st.number_input("Área Afetada (m²)", value=1000.0, key="area_val")
+        
     with c2:
-        st.subheader("👤 Dados do Infrator e Documentação")
-        inf_nome = st.text_input("Nome/Entidade")
-        tipo_ent = st.radio("Tipo", ["Pessoa Singular", "Pessoa Coletiva"], horizontal=True)
+        st.subheader("👤 Dossier do Processo")
+        inf_nome = st.text_input("Nome/Entidade", key="nome_val")
+        tipo_ent = st.radio("Tipo", ["Pessoa Singular", "Pessoa Coletiva"], horizontal=True, key="tipo_val")
         
-        # --- NOVO: Carregamento de Auto de Notícia ---
-        upload_auto = st.file_uploader("📄 Carregar Auto de Notícia (PDF)", type=['pdf'], key="auto_noticia_pdf")
+        # --- MANUTENÇÃO DOS UPLOADS ---
+        upload_auto = st.file_uploader("📄 Auto de Notícia (PDF)", type=['pdf'], key="auto_noticia_pdf")
+        upload_relatorio = st.file_uploader("📑 Relatório Técnico de Fiscalização (PDF)", type=['pdf'], key="relatorio_extra_pdf")
         
-        if upload_auto:
-            st.info("✅ Documento carregado. A IA irá cruzar os dados do Auto com a Matriz Legal.")
-        
-        # Substitua o text_area antigo por este:
-        st.session_state.desc_detalhada = st.text_area(
-            "📝 Observações Adicionais", 
-            value=st.session_state.get('desc_detalhada', ""),
-            placeholder="Descreva factos complementares não constantes no Auto...",
-            key="desc_input",
-            on_change=None # O Streamlit gere o estado automaticamente via key
+        st.write("---")
+        # --- NOVO: INSTRUÇÕES DE AJUSTE PARA A IA ---
+        instrucoes_ia = st.text_area(
+            "🤖 Instruções de Ajuste para este Processo",
+            placeholder="Ex: Valoriza a reincidência; foca na destruição de espécies protegidas; assume viabilidade de legalização se houver demolição parcial...",
+            key="ia_custom_input",
+            help="Comandos diretos que a IA deve seguir além da análise legal padrão."
         )
-
+        
 with tabs[1]:
     incide_ren = st.toggle("🚨 A infração localiza-se em área de REN?", key="switch_ren")
     
@@ -502,13 +500,12 @@ with tabs[7]:
 
     if st.button("🚀 Gerar Informação Técnica Fundamentada"):
         if not api_key:
-            st.error("Falta a API Key.")
+            st.error("Falta a API Key no menu lateral.")
         else:
             with st.spinner("A realizar auditoria jurídica transversal e análise documental (2024-2026)..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
                 # --- 1. SEGURANÇA CONTRA NAMEERROR (INICIALIZAÇÃO DE VARIÁVEIS) ---
-                # Garante que as variáveis existem mesmo que os separadores não tenham sido abertos
                 v_ren = {
                     'sel_ren': locals().get('sel_ren', []),
                     'sel_inter_ren': locals().get('sel_inter_ren', [])
@@ -543,35 +540,35 @@ with tabs[7]:
                     'desc_pdm': locals().get('desc_pdm', '')
                 }
 
-                # --- 2. EXTRAÇÃO DE TEXTO DOS DOCUMENTOS (AUTO E PDM) ---
-                texto_auto_noticia = ""
-                if 'auto_noticia_pdf' in st.session_state and st.session_state.auto_noticia_pdf:
-                    try:
-                        reader_auto = PdfReader(st.session_state.auto_noticia_pdf)
-                        texto_auto_noticia = "\n".join([page.extract_text() for page in reader_auto.pages])
-                    except Exception as e:
-                        texto_auto_noticia = f"Erro na leitura do Auto de Notícia: {e}"
+                # --- 2. EXTRAÇÃO DE TEXTO DOS DOCUMENTOS (AUTO, RELATÓRIO E PDM) ---
+                def extrair_pdf(upload_key):
+                    if upload_key in st.session_state and st.session_state[upload_key]:
+                        try:
+                            reader = PdfReader(st.session_state[upload_key])
+                            return "\n".join([page.extract_text() for page in reader.pages])
+                        except: return "Erro na leitura do documento."
+                    return ""
 
-                texto_pdm_reg = ""
-                if 'pdm_reg_upload' in st.session_state and st.session_state.pdm_reg_upload:
-                    try:
-                        reader_pdm = PdfReader(st.session_state.pdm_reg_upload)
-                        # Extrai as primeiras 15 páginas para contexto regulamentar relevante
-                        texto_pdm_reg = "\n".join([page.extract_text() for page in reader_pdm.pages[:15]])
-                    except Exception as e:
-                        texto_pdm_reg = f"Erro na leitura do Regulamento PDM: {e}"
+                texto_auto = extrair_pdf('auto_noticia_pdf')
+                texto_relatorio_extra = extrair_pdf('relatorio_extra_pdf') # Mantendo função de relatório extra
+                texto_pdm_reg = extrair_pdf('pdm_reg_upload')
 
                 # --- 3. PREPARAÇÃO DO QUADRO LEGISLATIVO PARA A IA ---
-                legis_ref_text = ""
-                for cat, leis in QUADRO_LEGAL_REF.items():
-                    legis_ref_text += f"\n- {cat}: " + " | ".join(leis)
+                legis_ref_text = "\n".join([f"- {cat}: {', '.join(leis)}" for cat, leis in QUADRO_LEGAL_REF.items()])
 
                 # --- 4. CONSTRUÇÃO DOS CONTEXTOS E INSTRUÇÕES DE AUDITORIA ---
-                instrucoes_audit = """
+                # Recupera a nova caixa de instruções complementares do utilizador
+                inst_complementares = st.session_state.get('ia_custom_input', 'Seguir trâmite legal padrão.')
+
+                instrucoes_audit = f"""
+                ⚠️ INSTRUÇÃO PRIORITÁRIA DO UTILIZADOR PARA ESTE PROCESSO:
+                {inst_complementares}
+
                 ⚠️ INSTRUÇÕES DE AUDITORIA AUTOMÁTICA TRANSVERSAL:
                 1. REN: Determinar Regime de Controlo e conformidade com Portaria 419/2012 (permeabilidade/solo).
                 2. RAN: Analisar áreas (m²) no Auto/Relatório e verificar conformidade com PORTARIA 162/2011 (limites de habitação 300m2, apoios 40m2, etc).
                 3. PDM: Confrontar o 'Extrato do Regulamento PDM' com a 'Análise Técnica PDM' e o 'Auto de Notícia' para determinar conformidade (CONFORME/NÃO CONFORME/CONDICIONADA).
+                4. SANCIONATÓRIO: Deves determinar a GRAVIDADE (Leve, Grave ou Muito Grave) e as MEDIDAS DE REPOSIÇÃO com base na Lei 50/2006 (v. 87/2024).
                 """
 
                 contexto_natura = f"""
@@ -591,18 +588,19 @@ with tabs[7]:
 
                 prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
-                O teu objetivo é auditar um Auto de Notícia e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
+                O teu objetivo é realizar uma auditoria pericial e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
 
                 {instrucoes_audit}
 
                 DADOS DE SUPORTE DOCUMENTAL:
-                - AUTO DE NOTÍCIA (PDF): {texto_auto_noticia if texto_auto_noticia else "Nenhum PDF carregado. Usar factos manuais."}
+                - AUTO DE NOTÍCIA (PDF): {texto_auto[:4000] if texto_auto else "Nenhum PDF de Auto carregado."}
+                - RELATÓRIO EXTRA (PDF): {texto_relatorio_extra[:4000] if texto_relatorio_extra else "Nenhum relatório complementar carregado."}
                 - REGULAMENTO PDM (EXTRATO PDF): {texto_pdm_reg[:3000] if texto_pdm_reg else "Nenhum Regulamento carregado."}
                 
                 DADOS ADICIONAIS:
-                - Descrição Manual: {desc_manual}
+                - Descrição Manual dos Factos: {desc_manual}
                 - Análise Técnica PDM: {v_pdm['desc_pdm']}
-                - Área Afetada: {area_m2}m2 | Categoria Solo PDM: {v_pdm['sel_pdm']} | Artigo Alvo: {v_pdm['artigo_pdm']}
+                - Local: {local} | Área Afetada: {area_m2}m2 | Solo PDM: {v_pdm['sel_pdm']} | Artigo: {v_pdm['artigo_pdm']}
 
                 MATRIZ LEGAL DE APOIO:
                 - REN (DL 166/2008 v. 123/2024): {v_ren['sel_ren']} | Interdições: {v_ren['sel_inter_ren']}
@@ -614,20 +612,20 @@ with tabs[7]:
                 {legis_ref_text}
 
                 ESTRUTURA OBRIGATÓRIA:
-                1. **OBJETIVO**: Análise face aos documentos carregados e regimes de servidão.
-                2. **AUDITORIA DE ORDENAMENTO (PDM)**: Determinar conformidade com o Regulamento e RJUE.
-                3. **AUDITORIA TÉCNICA RAN (PORTARIA 162/2011)**: Analisar criticamente áreas e limites métricos citados.
-                4. **AUDITORIA TÉCNICA REN (PORTARIA 419/2012)**: Analisar requisitos de permeabilidade e solo.
-                5. **FUNDAMENTAÇÃO JURÍDICA E SANCIONATÓRIA**: Identificar normas violadas e aplicar Lei 50/2006 (v. 87/2024).
-                6. **ANÁLISE DE VIABILIDADE**: Concluir sobre a possibilidade de legalização.
+                1. **OBJETIVO E ANÁLISE DOCUMENTAL**: Cruzamento do Auto, Relatório e Regulamentos.
+                2. **AUDITORIA TÉCNICA TRANSVERSAL**: Confronto com Portarias 419/2012 e 162/2011 (limites métricos e materiais).
+                3. **FUNDAMENTAÇÃO JURÍDICA E GRADUAÇÃO DA INFRAÇÃO**: Identificar normas violadas e determinar gravidade via Lei 50/2006 (v. 87/2024).
+                4. **PRESCRIÇÃO DE MEDIDAS DE REPOSIÇÃO/MINIMIZAÇÃO**: Determinar as ações técnicas para reposição da legalidade.
+                5. **PARECER FINAL E VIABILIDADE DE LEGALIZAÇÃO**.
 
                 ESTILO: Jurídico, formal, PT-PT. Capítulos a BOLD.
                 """
                 
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Informação Técnica gerada com Auditoria Transversal Automática!")
-                    st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
+                    st.success("Informação Técnica pericial gerada com sucesso!")
                     st.write(res)
+                    # Função de exportação Word
+                    st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                 except Exception as e:
                     st.error(f"Erro na geração: {e}")
