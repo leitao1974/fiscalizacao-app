@@ -472,11 +472,18 @@ with tabs[7]:
     st.subheader("⚖️ Regimes Sancionatórios Ativados")
     col_reg1, col_reg2 = st.columns(2)
     with col_reg1:
-        if sel_ren: st.warning(f"🔹 **REN:** {matriz_sancionatoria['REN']}")
-        if sel_inter_ran: st.warning(f"🔹 **RAN:** {matriz_sancionatoria['RAN']}")
+        # Uso de get() para evitar erro caso o tab não tenha sido aberto
+        if locals().get('sel_ren'): 
+            st.warning(f"🔹 **REN:** {matriz_sancionatoria['REN']['Pessoa Singular']}")
+        if locals().get('sel_inter_ran'): 
+            st.warning(f"🔹 **RAN:** {matriz_sancionatoria['RAN']['Interdições/Utilizações']}")
     with col_reg2:
-        if sel_zec or sel_art9: st.warning(f"🔹 **Natura 2000:** {matriz_sancionatoria['NATURA 2000']}")
-        if sel_rh_int or sel_rh_cond: st.warning(f"🔹 **Água:** {matriz_sancionatoria['AGUA']}")
+        if locals().get('sel_zec') or locals().get('sel_art9'): 
+            st.warning(f"🔹 **Natura 2000:** {matriz_sancionatoria['NATURA 2000']['Pessoa Singular']}")
+        
+        # CORREÇÃO DEFINITIVA: Alterado de 'AGUA' para 'RECURSOS HÍDRICOS'
+        if locals().get('sel_rh_int') or locals().get('sel_rh_cond'): 
+            st.warning(f"🔹 **Recursos Hídricos:** {matriz_sancionatoria['RECURSOS HÍDRICOS']['Pessoa Singular']}")
 
     # Função interna para exportação
     def export_docx(res_text):
