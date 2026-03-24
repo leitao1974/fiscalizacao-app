@@ -506,104 +506,68 @@ with tabs[7]:
                 model = genai.GenerativeModel(modelo_selecionado)
                 
                 # --- 1. SEGURANÇA CONTRA NAMEERROR (INICIALIZAÇÃO DE VARIÁVEIS) ---
-                v_ren = {
-                    'sel_ren': locals().get('sel_ren', []),
-                    'sel_inter_ren': locals().get('sel_inter_ren', [])
-                }
-                
-                v_ran = {
-                    'sel_inter_ran': locals().get('sel_inter_ran', []),
-                    'sel_util_ran': locals().get('sel_util_ran', [])
-                }
-
-                v_natura = {
-                    'sel_zec': locals().get('sel_zec', []),
-                    'sel_rnap': locals().get('sel_rnap', []),
-                    'sel_art9': locals().get('sel_art9', []),
-                    'sel_zon': locals().get('sel_zon', [])
-                }
-
-                v_pat = {
-                    'sel_pat_int': locals().get('sel_pat_int', []),
-                    'sel_pat_cond': locals().get('sel_pat_cond', []),
-                    'sel_pat_dev': locals().get('sel_pat_dev', [])
-                }
-
-                v_rh = {
-                    'sel_rh_int': locals().get('sel_rh_int', []),
-                    'sel_rh_cond': locals().get('sel_rh_cond', [])
-                }
-
-                v_pdm = {
-                    'sel_pdm': locals().get('sel_pdm', []),
-                    'artigo_pdm': locals().get('artigo_pdm', ''),
-                    'desc_pdm': locals().get('desc_pdm', '')
-                }
+                v_ren = {'sel_ren': locals().get('sel_ren', []), 'sel_inter_ren': locals().get('sel_inter_ren', [])}
+                v_ran = {'sel_inter_ran': locals().get('sel_inter_ran', []), 'sel_util_ran': locals().get('sel_util_ran', [])}
+                v_natura = {'sel_zec': locals().get('sel_zec', []), 'sel_rnap': locals().get('sel_rnap', []), 'sel_art9': locals().get('sel_art9', []), 'sel_zon': locals().get('sel_zon', [])}
+                v_pat = {'sel_pat_int': locals().get('sel_pat_int', []), 'sel_pat_cond': locals().get('sel_pat_cond', []), 'sel_pat_dev': locals().get('sel_pat_dev', [])}
+                v_rh = {'sel_rh_int': locals().get('sel_rh_int', []), 'sel_rh_cond': locals().get('sel_rh_cond', [])}
+                v_pdm = {'sel_pdm': locals().get('sel_pdm', []), 'artigo_pdm': locals().get('artigo_pdm', ''), 'desc_pdm': locals().get('desc_pdm', '')}
 
                 # --- 2. EXTRAÇÃO DE TEXTO DOS DOCUMENTOS (AUTO, RELATÓRIO E PDM) ---
-                def extrair_pdf(upload_key):
-                    if upload_key in st.session_state and st.session_state[upload_key]:
+                def extrair_pdf(upload):
+                    if upload:
                         try:
-                            reader = PdfReader(st.session_state[upload_key])
+                            reader = PdfReader(upload)
                             return "\n".join([page.extract_text() for page in reader.pages])
-                        except: return "Erro na leitura do documento."
+                        except Exception: return "Erro na leitura do documento."
                     return ""
 
-                texto_auto = extrair_pdf('auto_noticia_pdf')
-                texto_relatorio_extra = extrair_pdf('relatorio_extra_pdf') # Mantendo função de relatório extra
-                texto_pdm_reg = extrair_pdf('pdm_reg_upload')
+                texto_auto = extrair_pdf(st.session_state.get('auto_noticia_pdf'))
+                texto_relatorio_extra = extrair_pdf(st.session_state.get('relatorio_extra_pdf'))
+                texto_pdm_reg = extrair_pdf(st.session_state.get('pdm_reg_upload'))
 
                 # --- 3. PREPARAÇÃO DO QUADRO LEGISLATIVO PARA A IA ---
                 legis_ref_text = "\n".join([f"- {cat}: {', '.join(leis)}" for cat, leis in QUADRO_LEGAL_REF.items()])
 
-                # --- 4. CONSTRUÇÃO DOS CONTEXTOS E INSTRUÇÕES DE AUDITORIA ---
-                # Recupera a nova caixa de instruções complementares do utilizador
+                # --- 4. CONSTRUÇÃO DAS INSTRUÇÕES DE AJUSTE PERSONALIZADO ---
                 inst_complementares = st.session_state.get('ia_custom_input', 'Seguir trâmite legal padrão.')
 
                 instrucoes_audit = f"""
-                ⚠️ INSTRUÇÃO PRIORITÁRIA DO UTILIZADOR PARA ESTE PROCESSO:
+                ⚠️ INSTRUÇÃO PRIORITÁRIA DO UTILIZADOR PARA ESTE PROCESSO (SOBREPÕE-SE AO PADRÃO):
                 {inst_complementares}
 
-                ⚠️ INSTRUÇÕES DE AUDITORIA AUTOMÁTICA TRANSVERSAL:
-                1. REN: Determinar Regime de Controlo e conformidade com Portaria 419/2012 (permeabilidade/solo).
-                2. RAN: Analisar áreas (m²) no Auto/Relatório e verificar conformidade com PORTARIA 162/2011 (limites de habitação 300m2, apoios 40m2, etc).
-                3. PDM: Confrontar o 'Extrato do Regulamento PDM' com a 'Análise Técnica PDM' e o 'Auto de Notícia' para determinar conformidade (CONFORME/NÃO CONFORME/CONDICIONADA).
-                4. SANCIONATÓRIO: Deves determinar a GRAVIDADE (Leve, Grave ou Muito Grave) e as MEDIDAS DE REPOSIÇÃO com base na Lei 50/2006 (v. 87/2024).
+                ⚠️ TAREFAS DE AUDITORIA AUTOMÁTICA:
+                1. REN: Determinar Regime de Controlo (Art. 21.º) e conformidade Portaria 419/2012.
+                2. RAN: Analisar áreas métricas no Auto/Relatório e verificar limites Portaria 162/2011 (habitação 300m2, apoios 40m2, etc).
+                3. PDM: Confrontar o Regulamento com a Análise Técnica e o Auto para ditar conformidade.
+                4. SANCIONATÓRIO: Determinar GRAVIDADE e MEDIDAS DE REPOSIÇÃO via Lei 50/2006 (v. 87/2024).
                 """
 
-                contexto_natura = f"""
-                REDE NATURA 2000 / ÁREAS PROTEGIDAS:
-                - Sítios ZEC/ZPE: {v_natura['sel_zec']} | RNAP: {v_natura['sel_rnap']}
-                - Condicionantes Art. 9.º n.º 2: {v_natura['sel_art9']}
-                """ if incide_natura else "N/A"
-
-                contexto_ran = f"""
-                RESERVA AGRÍCOLA NACIONAL (RAN):
-                - Ações Interditas Selecionadas (Art. 21.º): {v_ran['sel_inter_ran']}
-                - Pretensão de Utilização (Art. 22.º): {v_ran['sel_util_ran']}
-                """ if incide_ran else "N/A"
+                # Contextos específicos para o prompt
+                contexto_natura = f"NATURA 2000: Sítios: {v_natura['sel_zec']} | RNAP: {v_natura['sel_rnap']} | Art 9º: {v_natura['sel_art9']}" if incide_natura else "N/A"
+                contexto_ran = f"RAN: Interditas: {v_ran['sel_inter_ran']} | Pretensão Art. 22º: {v_ran['sel_util_ran']}" if incide_ran else "N/A"
 
                 # 5. Recuperação Segura da Descrição Manual
                 desc_manual = st.session_state.get('desc_input', st.session_state.get('desc_detalhada', 'Sem descrição adicional.'))
 
                 prompt = f"""
-                Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
-                O teu objetivo é realizar uma auditoria pericial e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
+                Age como Perito Técnico Sénior e Jurista Forense.
+                O teu objetivo é realizar uma auditoria pericial cruzada e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA.
 
                 {instrucoes_audit}
 
-                DADOS DE SUPORTE DOCUMENTAL:
-                - AUTO DE NOTÍCIA (PDF): {texto_auto[:4000] if texto_auto else "Nenhum PDF de Auto carregado."}
-                - RELATÓRIO EXTRA (PDF): {texto_relatorio_extra[:4000] if texto_relatorio_extra else "Nenhum relatório complementar carregado."}
-                - REGULAMENTO PDM (EXTRATO PDF): {texto_pdm_reg[:3000] if texto_pdm_reg else "Nenhum Regulamento carregado."}
+                DADOS DE SUPORTE DOCUMENTAL (BASE DE PROVA):
+                - AUTO DE NOTÍCIA (PDF): {texto_auto[:4000]}
+                - RELATÓRIO TÉCNICO EXTRA (PDF): {texto_relatorio_extra[:4000]}
+                - REGULAMENTO PDM (EXTRATO): {texto_pdm_reg[:3000]}
                 
                 DADOS ADICIONAIS:
-                - Descrição Manual dos Factos: {desc_manual}
-                - Análise Técnica PDM: {v_pdm['desc_pdm']}
-                - Local: {local} | Área Afetada: {area_m2}m2 | Solo PDM: {v_pdm['sel_pdm']} | Artigo: {v_pdm['artigo_pdm']}
+                - Local: {local} | Área: {area_m2}m2 | Solo PDM: {v_pdm['sel_pdm']}
+                - Descrição Manual: {desc_manual}
+                - Análise Técnica PDM do Utilizador: {v_pdm['desc_pdm']}
 
-                MATRIZ LEGAL DE APOIO:
-                - REN (DL 166/2008 v. 123/2024): {v_ren['sel_ren']} | Interdições: {v_ren['sel_inter_ren']}
+                MATRIZ DE SERVIDÕES:
+                - REN: {v_ren['sel_ren']} | Interdições: {v_ren['sel_inter_ren']}
                 - {contexto_ran}
                 - {contexto_natura}
                 - PATRIMÓNIO: {v_pat['sel_pat_int']} | RECURSOS HÍDRICOS: {v_rh['sel_rh_int']}
@@ -612,20 +576,20 @@ with tabs[7]:
                 {legis_ref_text}
 
                 ESTRUTURA OBRIGATÓRIA:
-                1. **OBJETIVO E ANÁLISE DOCUMENTAL**: Cruzamento do Auto, Relatório e Regulamentos.
-                2. **AUDITORIA TÉCNICA TRANSVERSAL**: Confronto com Portarias 419/2012 e 162/2011 (limites métricos e materiais).
-                3. **FUNDAMENTAÇÃO JURÍDICA E GRADUAÇÃO DA INFRAÇÃO**: Identificar normas violadas e determinar gravidade via Lei 50/2006 (v. 87/2024).
-                4. **PRESCRIÇÃO DE MEDIDAS DE REPOSIÇÃO/MINIMIZAÇÃO**: Determinar as ações técnicas para reposição da legalidade.
-                5. **PARECER FINAL E VIABILIDADE DE LEGALIZAÇÃO**.
+                1. **OBJETIVO E AUDITORIA DOCUMENTAL** (Citar inconsistências entre Auto e Relatório se existirem)
+                2. **ANÁLISE TÉCNICA TRANSVERSAL** (Confronto Portarias 419/2012 e 162/2011)
+                3. **FUNDAMENTAÇÃO JURÍDICA E GRADUAÇÃO DA INFRAÇÃO** (Lei 50/2006 v. 2026)
+                4. **PRESCRIÇÃO DE MEDIDAS DE REPOSIÇÃO E MINIMIZAÇÃO**
+                5. **PARECER FINAL SOBRE VIABILIDADE DE LEGALIZAÇÃO**
 
-                ESTILO: Jurídico, formal, PT-PT. Capítulos a BOLD.
+                ESTILO: Jurídico, formal, Português de Portugal (PT-PT).
                 """
                 
                 try:
                     res = model.generate_content(prompt).text
                     st.success("Informação Técnica pericial gerada com sucesso!")
                     st.write(res)
-                    # Função de exportação Word
+                    # Função de exportação para Word
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                 except Exception as e:
                     st.error(f"Erro na geração: {e}")
