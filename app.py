@@ -437,27 +437,27 @@ with tabs[5]:
 with tabs[6]:
     incide_pdm = st.toggle("🗺️ A infração viola o PDM / Urbanismo?", key="switch_pdm")
     if incide_pdm:
-        st.info("**Ordenamento do Território (Plano Diretor Municipal - PDM)**")
+        st.info("**Ordenamento do Território:** Análise baseada no RJIGT (DL 80/2015) e RJUE (DL 555/99).")
         col1, col2 = st.columns(2)
         with col1:
-            st.write("**Classes e Categorias de Espaço (PDM)**")
-            sel_pdm = st.multiselect("Selecione a classificação do solo no local:", pdm_classes_solo)
-            confo_pdm = st.radio("Conformidade com o Plano:", ["Não conforme (Uso não previsto)", "Uso condicionado (Falta de título)", "Em conformidade"])
+            st.subheader("1. Classificação do Solo")
+            sel_pdm = st.multiselect("Selecione a categoria de espaço (via Planta de Ordenamento):", pdm_classes_solo)
+            artigo_pdm = st.text_input("Artigo(s) do Regulamento em análise:", placeholder="Ex: Artigo 45.º")
+        
         with col2:
-            st.write("**Documentação de Suporte**")
-            # Reintegração da função de carregamento do regulamento
+            st.subheader("2. Suporte Documental")
             upload_pdm = st.file_uploader("📂 Carregar Regulamento do PDM (PDF)", type=['pdf'], key="pdm_reg_upload")
-            artigo_pdm = st.text_input("Artigo(s) do Regulamento aplicável(eis):", placeholder="Ex: Artigo 45.º")
+            st.caption("ℹ️ A IA analisará o PDF para determinar a conformidade com os índices urbanísticos e usos permitidos.")
     
         desc_pdm = st.text_area(
             "📝 Análise Técnica de Enquadramento no PDM", 
-            placeholder="Descreva a violação dos índices urbanísticos, afastamentos ou usos interditos...",
+            placeholder="Descreva a pretensão ou a violação (ex: excesso de cércea, uso interdito)...",
             height=100
         )
     else:
-        st.info("Regime de PDM desativado para esta ocorrência.")
-        sel_pdm, confo_pdm, artigo_pdm, desc_pdm, upload_pdm = [], "N/A", "", "", None
-
+        st.warning("Regime de PDM desativado.")
+        sel_pdm, artigo_pdm, desc_pdm = [], "", ""
+        
 with tabs[7]:
     st.subheader("🛠️ Medidas de Minimização Propostas")
     sel_medidas = [i for i in medidas_minimizacao if st.checkbox(i, key=f'med_{i}')]
@@ -504,10 +504,11 @@ with tabs[7]:
         if not api_key:
             st.error("Falta a API Key.")
         else:
-            with st.spinner("A analisar Auto de Notícia e legislação vigente (2024-2026)..."):
+            with st.spinner("A realizar auditoria jurídica transversal e análise documental (2024-2026)..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
                 # --- 1. SEGURANÇA CONTRA NAMEERROR (INICIALIZAÇÃO DE VARIÁVEIS) ---
+                # Garante que as variáveis existem mesmo que os separadores não tenham sido abertos
                 v_ren = {
                     'sel_ren': locals().get('sel_ren', []),
                     'sel_inter_ren': locals().get('sel_inter_ren', [])
@@ -536,7 +537,13 @@ with tabs[7]:
                     'sel_rh_cond': locals().get('sel_rh_cond', [])
                 }
 
-                # --- 2. EXTRAÇÃO DE TEXTO DO AUTO DE NOTÍCIA ---
+                v_pdm = {
+                    'sel_pdm': locals().get('sel_pdm', []),
+                    'artigo_pdm': locals().get('artigo_pdm', ''),
+                    'desc_pdm': locals().get('desc_pdm', '')
+                }
+
+                # --- 2. EXTRAÇÃO DE TEXTO DOS DOCUMENTOS (AUTO E PDM) ---
                 texto_auto_noticia = ""
                 if 'auto_noticia_pdf' in st.session_state and st.session_state.auto_noticia_pdf:
                     try:
@@ -545,18 +552,26 @@ with tabs[7]:
                     except Exception as e:
                         texto_auto_noticia = f"Erro na leitura do Auto de Notícia: {e}"
 
+                texto_pdm_reg = ""
+                if 'pdm_reg_upload' in st.session_state and st.session_state.pdm_reg_upload:
+                    try:
+                        reader_pdm = PdfReader(st.session_state.pdm_reg_upload)
+                        # Extrai as primeiras 15 páginas para contexto regulamentar relevante
+                        texto_pdm_reg = "\n".join([page.extract_text() for page in reader_pdm.pages[:15]])
+                    except Exception as e:
+                        texto_pdm_reg = f"Erro na leitura do Regulamento PDM: {e}"
+
                 # --- 3. PREPARAÇÃO DO QUADRO LEGISLATIVO PARA A IA ---
                 legis_ref_text = ""
                 for cat, leis in QUADRO_LEGAL_REF.items():
                     legis_ref_text += f"\n- {cat}: " + " | ".join(leis)
 
-                # --- 4. CONSTRUÇÃO DOS CONTEXTOS PARA O PROMPT ---
-                # Instrução mestre para Auditoria Automática Transversal
-                contexto_ia_audit = """
-                ⚠️ INSTRUÇÃO DE AUDITORIA AUTOMÁTICA (RAN/REN):
-                - REN: Determinar o REGIME DE CONTROLO e verificar o cumprimento dos REQUISITOS TÉCNICOS da Portaria 419/2012 (permeabilidade e solo).
-                - RAN: Deves analisar as áreas (m²) descritas no Auto e verificar a conformidade com a PORTARIA 162/2011 (ex: limites de 300m² para habitação, 750m² para explorações ou 1% de implantação).
-                - RAN: Validar se a ação cumpre os requisitos de memória descritiva e inexistência de alternativa fora da reserva.
+                # --- 4. CONSTRUÇÃO DOS CONTEXTOS E INSTRUÇÕES DE AUDITORIA ---
+                instrucoes_audit = """
+                ⚠️ INSTRUÇÕES DE AUDITORIA AUTOMÁTICA TRANSVERSAL:
+                1. REN: Determinar Regime de Controlo e conformidade com Portaria 419/2012 (permeabilidade/solo).
+                2. RAN: Analisar áreas (m²) no Auto/Relatório e verificar conformidade com PORTARIA 162/2011 (limites de habitação 300m2, apoios 40m2, etc).
+                3. PDM: Confrontar o 'Extrato do Regulamento PDM' com a 'Análise Técnica PDM' e o 'Auto de Notícia' para determinar conformidade (CONFORME/NÃO CONFORME/CONDICIONADA).
                 """
 
                 contexto_natura = f"""
@@ -578,13 +593,16 @@ with tabs[7]:
                 Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
                 O teu objetivo é auditar um Auto de Notícia e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
 
-                {contexto_ia_audit}
+                {instrucoes_audit}
 
-                DADOS DO AUTO DE NOTÍCIA (BASE DE ANÁLISE):
-                {texto_auto_noticia if texto_auto_noticia else "Nenhum PDF carregado. Usar factos manuais."}
-
-                DESCRIÇÃO MANUAL COMPLEMENTAR:
-                {desc_manual}
+                DADOS DE SUPORTE DOCUMENTAL:
+                - AUTO DE NOTÍCIA (PDF): {texto_auto_noticia if texto_auto_noticia else "Nenhum PDF carregado. Usar factos manuais."}
+                - REGULAMENTO PDM (EXTRATO PDF): {texto_pdm_reg[:3000] if texto_pdm_reg else "Nenhum Regulamento carregado."}
+                
+                DADOS ADICIONAIS:
+                - Descrição Manual: {desc_manual}
+                - Análise Técnica PDM: {v_pdm['desc_pdm']}
+                - Área Afetada: {area_m2}m2 | Categoria Solo PDM: {v_pdm['sel_pdm']} | Artigo Alvo: {v_pdm['artigo_pdm']}
 
                 MATRIZ LEGAL DE APOIO:
                 - REN (DL 166/2008 v. 123/2024): {v_ren['sel_ren']} | Interdições: {v_ren['sel_inter_ren']}
@@ -596,21 +614,20 @@ with tabs[7]:
                 {legis_ref_text}
 
                 ESTRUTURA OBRIGATÓRIA:
-                1. **OBJETIVO**: Análise face ao Auto de Notícia e regimes de servidão.
-                2. **AUDITORIA TÉCNICA RAN (PORTARIA 162/2011)**: Analisar criticamente áreas e limites métricos.
-                3. **AUDITORIA TÉCNICA REN (PORTARIA 419/2012)**: Analisar requisitos de permeabilidade e solo.
-                4. **REGIME DE CONTROLO ADMINISTRATIVO**: Identificar o enquadramento (Isento, CP, Autorização ou RIP).
-                5. **FUNDAMENTAÇÃO JURÍDICA**: Identificar normas violadas (DL 166/2008 v. 123/2024, DL 73/2009, etc).
-                6. **ANÁLISE DE VIABILIDADE E SANCIONATÓRIA**: Concluir sobre legalização e aplicar Lei 50/2006 (v. 87/2024).
+                1. **OBJETIVO**: Análise face aos documentos carregados e regimes de servidão.
+                2. **AUDITORIA DE ORDENAMENTO (PDM)**: Determinar conformidade com o Regulamento e RJUE.
+                3. **AUDITORIA TÉCNICA RAN (PORTARIA 162/2011)**: Analisar criticamente áreas e limites métricos citados.
+                4. **AUDITORIA TÉCNICA REN (PORTARIA 419/2012)**: Analisar requisitos de permeabilidade e solo.
+                5. **FUNDAMENTAÇÃO JURÍDICA E SANCIONATÓRIA**: Identificar normas violadas e aplicar Lei 50/2006 (v. 87/2024).
+                6. **ANÁLISE DE VIABILIDADE**: Concluir sobre a possibilidade de legalização.
 
                 ESTILO: Jurídico, formal, PT-PT. Capítulos a BOLD.
                 """
                 
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Informação Técnica gerada com Auditoria RAN/REN Automática!")
+                    st.success("Informação Técnica gerada com Auditoria Transversal Automática!")
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                     st.write(res)
                 except Exception as e:
                     st.error(f"Erro na geração: {e}")
-
