@@ -378,7 +378,6 @@ with tabs[2]:
         sel_zec, sel_rnap, sel_art9, sel_zon = [], [], [], []
 
 with tabs[3]:
-    # Interruptor mestre para RAN - Referenciando a Matriz Legislativa Consolidada
     incide_ran = st.toggle("🌾 A infração localiza-se em área de RAN?", key="switch_ran")
     
     if incide_ran:
@@ -387,36 +386,21 @@ with tabs[3]:
         
         with col_r1:
             st.subheader("1. Ações Interditas (Artigo 21.º)")
-            # Mapeamento das interdições conforme a Matriz Legal Integral
+            # Mapeia as interdições baseadas no dicionário consolidado
             sel_inter_ran = [k for k in ran_interdicoes_dict.keys() if st.checkbox(k, key=f'ran_int_{k[:5]}')]
             
+        with col_r2:
             st.subheader("2. Pretensão de Enquadramento (Artigo 22.º)")
-            # Seleção baseada nas Utilizações Permitidas
             sel_util_ran = st.multiselect(
                 "Ação enquadrada em qual alínea de utilização permitida?", 
                 list(ran_utilizacoes_permitidas.keys()),
                 key="util_ran_sel"
             )
-            
-        with col_r2:
-            st.subheader("3. Verificação de Limites (Portaria n.º 162/2011)")
-            # Verificações técnicas fundamentais para o cálculo de viabilidade
-            viola_ati = st.checkbox("Violação de Área (Excede 300m² para habitação ou 750m² para armazéns)", key="v_ati")
-            falta_parecer_ran = st.checkbox("Falta de Parecer Prévio Vinculativo da Entidade Regional", key="f_parecer_ran")
-            viola_permeabilidade = st.checkbox("Uso de pavimentos não permeáveis em vias de acesso", key="v_perm_ran")
-            # Variável necessária para o prompt de viabilidade de legalização
-            falta_alternativa = st.checkbox("Inexistência de prova de falta de alternativa fora de RAN", key="f_alt_ran")
-            
-            st.write("---")
-            # Exibição dinâmica das condicionantes técnicas para apoio ao utilizador
-            if sel_util_ran:
-                for util in sel_util_ran:
-                    st.caption(f"🛡️ **Condicionante Técnica:** {ran_utilizacoes_permitidas[util]}")
+            st.caption("ℹ️ A verificação de limites (Portaria 162/2011) e a viabilidade técnica serão analisadas automaticamente pela IA com base no Auto/Relatório.")
+
     else:
-        st.warning("Área de RAN não selecionada. Esta secção será omitida do relatório.")
-        # Definição de variáveis vazias para evitar NameError no motor de IA
+        st.warning("Área de RAN não selecionada.")
         sel_inter_ran, sel_util_ran = [], []
-        viola_ati, falta_parecer_ran, viola_permeabilidade, falta_alternativa = False, False, False, False
         
 with tabs[4]:
     incide_patrimonio = st.toggle("🏛️ A infração afeta Património Cultural?", key="switch_pat")
@@ -531,11 +515,7 @@ with tabs[7]:
                 
                 v_ran = {
                     'sel_inter_ran': locals().get('sel_inter_ran', []),
-                    'sel_util_ran': locals().get('sel_util_ran', []),
-                    'viola_ati': locals().get('viola_ati', False),
-                    'falta_parecer_ran': locals().get('falta_parecer_ran', False),
-                    'viola_permeabilidade': locals().get('viola_permeabilidade', False),
-                    'falta_alternativa': locals().get('falta_alternativa', False)
+                    'sel_util_ran': locals().get('sel_util_ran', [])
                 }
 
                 v_natura = {
@@ -571,11 +551,12 @@ with tabs[7]:
                     legis_ref_text += f"\n- {cat}: " + " | ".join(leis)
 
                 # --- 4. CONSTRUÇÃO DOS CONTEXTOS PARA O PROMPT ---
-                # Instrução específica para IA verificar Portaria 419/2012 e Regime de Controlo automaticamente
+                # Instrução mestre para Auditoria Automática Transversal
                 contexto_ia_audit = """
-                ⚠️ INSTRUÇÃO DE AUDITORIA AUTOMÁTICA:
-                - Deves determinar o REGIME DE CONTROLO (Isento, Comunicação Prévia, Autorização ou RIP) com base no DL 166/2008 (v. 123/2024).
-                - Deves verificar o cumprimento dos REQUISITOS TÉCNICOS da Portaria 419/2012 (permeabilidade, modelação e drenagem) analisando o texto do Auto e as interdições selecionadas.
+                ⚠️ INSTRUÇÃO DE AUDITORIA AUTOMÁTICA (RAN/REN):
+                - REN: Determinar o REGIME DE CONTROLO e verificar o cumprimento dos REQUISITOS TÉCNICOS da Portaria 419/2012 (permeabilidade e solo).
+                - RAN: Deves analisar as áreas (m²) descritas no Auto e verificar a conformidade com a PORTARIA 162/2011 (ex: limites de 300m² para habitação, 750m² para explorações ou 1% de implantação).
+                - RAN: Validar se a ação cumpre os requisitos de memória descritiva e inexistência de alternativa fora da reserva.
                 """
 
                 contexto_natura = f"""
@@ -586,9 +567,8 @@ with tabs[7]:
 
                 contexto_ran = f"""
                 RESERVA AGRÍCOLA NACIONAL (RAN):
-                - Ações Interditas (Art. 21.º): {v_ran['sel_inter_ran']}
-                - Utilizações Permitidas (Art. 22.º): {v_ran['sel_util_ran']}
-                - Verificação Portaria 162/2011: ATI excede limites? {v_ran['viola_ati']} | Sem parecer? {v_ran['falta_parecer_ran']}
+                - Ações Interditas Selecionadas (Art. 21.º): {v_ran['sel_inter_ran']}
+                - Pretensão de Utilização (Art. 22.º): {v_ran['sel_util_ran']}
                 """ if incide_ran else "N/A"
 
                 # 5. Recuperação Segura da Descrição Manual
@@ -596,7 +576,7 @@ with tabs[7]:
 
                 prompt = f"""
                 Age como Perito Técnico Sénior e Jurista especializado em Direito Administrativo, do Ambiente e do Património.
-                O teu objetivo é auditar um Auto de Notícia e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA.
+                O teu objetivo é auditar um Auto de Notícia e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA detalhada.
 
                 {contexto_ia_audit}
 
@@ -607,29 +587,28 @@ with tabs[7]:
                 {desc_manual}
 
                 MATRIZ LEGAL DE APOIO:
-                - REN (DL 166/2008 v. 123/2024): {v_ren['sel_ren']}
-                - Interdições REN detetadas: {v_ren['sel_inter_ren']}
-                {contexto_ran}
-                {contexto_natura}
+                - REN (DL 166/2008 v. 123/2024): {v_ren['sel_ren']} | Interdições: {v_ren['sel_inter_ren']}
+                - {contexto_ran}
+                - {contexto_natura}
                 - PATRIMÓNIO: {v_pat['sel_pat_int']} | RECURSOS HÍDRICOS: {v_rh['sel_rh_int']}
 
-                QUADRO LEGISLATIVO VIGENTE:
+                QUADRO LEGISLATIVO VIGENTE (2024-2026):
                 {legis_ref_text}
 
                 ESTRUTURA OBRIGATÓRIA:
                 1. **OBJETIVO**: Análise face ao Auto de Notícia e regimes de servidão.
-                2. **AUDITORIA TÉCNICA (PORTARIA 419/2012)**: Deves analisar se a ação viola os requisitos de permeabilidade e solo.
-                3. **REGIME DE CONTROLO**: Identificar o enquadramento administrativo correto (Art. 20.º ou 21.º do RJREN).
-                4. **FUNDAMENTAÇÃO JURÍDICA E TRANSGRESSÕES**: Identificar normas violadas (DL 166/2008 v. 123/2024, DL 73/2009, etc).
-                5. **ANÁLISE DE VIABILIDADE**: Concluir se é legalizável ou insuscetível de legalização.
-                6. **QUADRO SANCIONATÓRIO**: Aplicar coimas da Lei 50/2006 (atualizada pelo DL 87/2024).
+                2. **AUDITORIA TÉCNICA RAN (PORTARIA 162/2011)**: Analisar criticamente áreas e limites métricos.
+                3. **AUDITORIA TÉCNICA REN (PORTARIA 419/2012)**: Analisar requisitos de permeabilidade e solo.
+                4. **REGIME DE CONTROLO ADMINISTRATIVO**: Identificar o enquadramento (Isento, CP, Autorização ou RIP).
+                5. **FUNDAMENTAÇÃO JURÍDICA**: Identificar normas violadas (DL 166/2008 v. 123/2024, DL 73/2009, etc).
+                6. **ANÁLISE DE VIABILIDADE E SANCIONATÓRIA**: Concluir sobre legalização e aplicar Lei 50/2006 (v. 87/2024).
 
                 ESTILO: Jurídico, formal, PT-PT. Capítulos a BOLD.
                 """
                 
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Informação Técnica gerada com Auditoria Legal Automática!")
+                    st.success("Informação Técnica gerada com Auditoria RAN/REN Automática!")
                     st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
                     st.write(res)
                 except Exception as e:
