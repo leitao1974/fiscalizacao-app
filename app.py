@@ -435,25 +435,26 @@ with tabs[5]:
 with tabs[6]:
     incide_pdm = st.toggle("🗺️ A infração viola o PDM / Urbanismo?", key="switch_pdm")
     if incide_pdm:
-        st.info("**Ordenamento do Território:** Análise baseada no RJIGT (DL 80/2015) e RJUE (DL 555/99).")
+        st.info("**Ordenamento do Território:** Auditoria documental via Regulamento do PDM.")
         col1, col2 = st.columns(2)
         with col1:
-            st.subheader("1. Classificação do Solo")
-            sel_pdm = st.multiselect("Selecione a categoria de espaço (via Planta de Ordenamento):", pdm_classes_solo)
-            artigo_pdm = st.text_input("Artigo(s) do Regulamento em análise:", placeholder="Ex: Artigo 45.º")
+            st.subheader("1. Enquadramento e Instrução")
+            artigo_pdm = st.text_input("Artigo(s) em análise:", placeholder="Ex: Artigo 45.º e 48.º")
+            
+            # Caixa configurada para aceitar instruções de enquadramento
+            desc_pdm = st.text_area(
+                "📝 Análise Técnica e Instruções Específicas", 
+                placeholder="Ex: Verifica se a construção de anexo é permitida no Art. 45.º; Analisa se a cércea ultrapassa o limite do Plano...",
+                height=150,
+                key="pdm_inst_input"
+            )
         
         with col2:
             st.subheader("2. Suporte Documental")
             upload_pdm = st.file_uploader("📂 Carregar Regulamento do PDM (PDF)", type=['pdf'], key="pdm_reg_upload")
-            st.caption("ℹ️ A IA analisará o PDF para determinar a conformidade com os índices urbanísticos e usos permitidos.")
-    
-        desc_pdm = st.text_area(
-            "📝 Análise Técnica de Enquadramento no PDM", 
-            placeholder="Descreva a pretensão ou a violação (ex: excesso de cércea, uso interdito)...",
-            height=100
-        )
+            st.caption("ℹ️ A IA lerá o texto do PDF para executar as suas instruções acima.")
+            sel_pdm = st.multiselect("Classe de Solo:", pdm_classes_solo)
     else:
-        st.warning("Regime de PDM desativado.")
         sel_pdm, artigo_pdm, desc_pdm = [], "", ""
         
 with tabs[7]:
@@ -518,12 +519,19 @@ with tabs[7]:
                 v_natura = {'sel_zec': locals().get('sel_zec', []), 'sel_rnap': locals().get('sel_rnap', []), 'sel_art9': locals().get('sel_art9', []), 'sel_zon': locals().get('sel_zon', [])}
                 v_pat = {'sel_pat_int': locals().get('sel_pat_int', []), 'sel_pat_cond': locals().get('sel_pat_cond', []), 'sel_pat_dev': locals().get('sel_pat_dev', [])}
                 v_rh = {'sel_rh_int': locals().get('sel_rh_int', []), 'sel_rh_cond': locals().get('sel_rh_cond', [])}
-                v_pdm = {'sel_pdm': locals().get('sel_pdm', []), 'artigo_pdm': locals().get('artigo_pdm', ''), 'desc_pdm': locals().get('desc_pdm', '')}
+                
+                # Captura das variáveis do PDM com foco na nova caixa de instruções
+                v_pdm = {
+                    'sel_pdm': locals().get('sel_pdm', []), 
+                    'artigo_pdm': locals().get('artigo_pdm', ''), 
+                    'desc_pdm': locals().get('desc_pdm', '') # Agora contém instruções de enquadramento
+                }
 
                 # --- 2. EXTRAÇÃO DE TEXTO DOS DOCUMENTOS (AUTO, RELATÓRIO E PDM) ---
                 def extrair_pdf(upload):
                     if upload:
                         try:
+                            # reader importado via pypdf
                             reader = PdfReader(upload)
                             return "\n".join([page.extract_text() for page in reader.pages])
                         except Exception: return "Erro na leitura do documento."
@@ -537,25 +545,28 @@ with tabs[7]:
                 legis_ref_text = "\n".join([f"- {cat}: {', '.join(leis)}" for cat, leis in QUADRO_LEGAL_REF.items()])
 
                 # --- 4. CONSTRUÇÃO DAS INSTRUÇÕES DE AJUSTE PERSONALIZADO ---
-                inst_complementares = st.session_state.get('ia_custom_input', 'Seguir trâmite legal padrão.')
+                inst_ajuste_geral = st.session_state.get('ia_custom_input', 'Seguir trâmite legal padrão.')
 
                 instrucoes_audit = f"""
-                ⚠️ INSTRUÇÃO PRIORITÁRIA DO UTILIZADOR PARA ESTE PROCESSO (SOBREPÕE-SE AO PADRÃO):
-                {inst_complementares}
+                ⚠️ INSTRUÇÃO PRIORITÁRIA GERAL (SOBREPÕE-SE AO PADRÃO):
+                {inst_ajuste_geral}
+
+                🎯 INSTRUÇÃO ESPECÍFICA DE ENQUADRAMENTO PDM:
+                {v_pdm['desc_pdm'] if v_pdm['desc_pdm'] else "Realizar análise de conformidade urbanística padrão."}
 
                 ⚠️ TAREFAS DE AUDITORIA AUTOMÁTICA:
                 1. REN: Determinar Regime de Controlo (Art. 21.º) e conformidade Portaria 419/2012.
-                2. RAN: Analisar áreas métricas no Auto/Relatório e verificar limites Portaria 162/2011 (habitação 300m2, apoios 40m2, etc).
-                3. PDM: Confrontar o Regulamento com a Análise Técnica e o Auto para ditar conformidade.
+                2. RAN: Analisar áreas métricas no Auto/Relatório e verificar limites Portaria 162/2011.
+                3. PDM: Confrontar o Regulamento carregado com a 'Instrução de Enquadramento PDM' e o Auto de Notícia.
                 4. SANCIONATÓRIO: Determinar GRAVIDADE e MEDIDAS DE REPOSIÇÃO via Lei 50/2006 (v. 87/2024).
                 """
 
                 # Contextos específicos para o prompt
-                contexto_natura = f"NATURA 2000: Sítios: {v_natura['sel_zec']} | RNAP: {v_natura['sel_rnap']} | Art 9º: {v_natura['sel_art9']}" if incide_natura else "N/A"
-                contexto_ran = f"RAN: Interditas: {v_ran['sel_inter_ran']} | Pretensão Art. 22º: {v_ran['sel_util_ran']}" if incide_ran else "N/A"
+                contexto_natura = f"NATURA 2000: Sítios: {v_natura['sel_zec']} | RNAP: {v_natura['sel_rnap']}" if incide_natura else "N/A"
+                contexto_ran = f"RAN: Interditas: {v_ran['sel_inter_ran']} | Pretensão: {v_ran['sel_util_ran']}" if incide_ran else "N/A"
 
-                # 5. Recuperação Segura da Descrição Manual
-                desc_manual = st.session_state.get('desc_input', st.session_state.get('desc_detalhada', 'Sem descrição adicional.'))
+                # 5. Recuperação Segura da Descrição Manual de Factos
+                desc_manual_factos = st.session_state.get('desc_input', st.session_state.get('desc_detalhada', 'Sem descrição adicional.'))
 
                 prompt = f"""
                 Age como Perito Técnico Sénior e Jurista Forense.
@@ -568,12 +579,11 @@ with tabs[7]:
                 - RELATÓRIO TÉCNICO EXTRA (PDF): {texto_relatorio_extra[:4000]}
                 - REGULAMENTO PDM (EXTRATO): {texto_pdm_reg[:3000]}
                 
-                DADOS ADICIONAIS:
-                - Local: {local} | Área: {area_m2}m2 | Solo PDM: {v_pdm['sel_pdm']}
-                - Descrição Manual: {desc_manual}
-                - Análise Técnica PDM do Utilizador: {v_pdm['desc_pdm']}
+                DADOS ADICIONAIS DO CASO:
+                - Local: {local} | Área: {area_m2}m2 | Solo PDM: {v_pdm['sel_pdm']} | Artigos PDM: {v_pdm['artigo_pdm']}
+                - Descrição Manual de Factos: {desc_manual_factos}
 
-                MATRIZ DE SERVIDÕES:
+                MATRIZ DE SERVIDÕES CONFIGURADAS:
                 - REN: {v_ren['sel_ren']} | Interdições: {v_ren['sel_inter_ren']}
                 - {contexto_ran}
                 - {contexto_natura}
@@ -583,8 +593,8 @@ with tabs[7]:
                 {legis_ref_text}
 
                 ESTRUTURA OBRIGATÓRIA:
-                1. **OBJETIVO E AUDITORIA DOCUMENTAL** (Citar inconsistências entre Auto e Relatório se existirem)
-                2. **ANÁLISE TÉCNICA TRANSVERSAL** (Confronto Portarias 419/2012 e 162/2011)
+                1. **OBJETIVO E AUDITORIA DOCUMENTAL** (Validar factos entre Auto e Relatório)
+                2. **ANÁLISE TÉCNICA TRANSVERSAL** (Confronto Portarias 419/2012, 162/2011 e Regulamento PDM)
                 3. **FUNDAMENTAÇÃO JURÍDICA E GRADUAÇÃO DA INFRAÇÃO** (Lei 50/2006 v. 2026)
                 4. **PRESCRIÇÃO DE MEDIDAS DE REPOSIÇÃO E MINIMIZAÇÃO**
                 5. **PARECER FINAL SOBRE VIABILIDADE DE LEGALIZAÇÃO**
