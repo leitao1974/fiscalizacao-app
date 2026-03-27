@@ -510,28 +510,18 @@ with tabs[7]:
         if not api_key:
             st.error("Falta a API Key no menu lateral.")
         else:
-            with st.spinner("A realizar auditoria jurídica transversal e análise documental (2024-2026)..."):
+            with st.spinner("A gerar Relatório de Fiscalização conforme modelo oficial..."):
                 model = genai.GenerativeModel(modelo_selecionado)
                 
-                # --- 1. SEGURANÇA CONTRA NAMEERROR (INICIALIZAÇÃO DE VARIÁVEIS) ---
+                # --- 1. SEGURANÇA CONTRA NAMEERROR ---
                 v_ren = {'sel_ren': locals().get('sel_ren', []), 'sel_inter_ren': locals().get('sel_inter_ren', [])}
                 v_ran = {'sel_inter_ran': locals().get('sel_inter_ran', []), 'sel_util_ran': locals().get('sel_util_ran', [])}
-                v_natura = {'sel_zec': locals().get('sel_zec', []), 'sel_rnap': locals().get('sel_rnap', []), 'sel_art9': locals().get('sel_art9', []), 'sel_zon': locals().get('sel_zon', [])}
-                v_pat = {'sel_pat_int': locals().get('sel_pat_int', []), 'sel_pat_cond': locals().get('sel_pat_cond', []), 'sel_pat_dev': locals().get('sel_pat_dev', [])}
-                v_rh = {'sel_rh_int': locals().get('sel_rh_int', []), 'sel_rh_cond': locals().get('sel_rh_cond', [])}
-                
-                # Captura das variáveis do PDM com foco na nova caixa de instruções
-                v_pdm = {
-                    'sel_pdm': locals().get('sel_pdm', []), 
-                    'artigo_pdm': locals().get('artigo_pdm', ''), 
-                    'desc_pdm': locals().get('desc_pdm', '') # Agora contém instruções de enquadramento
-                }
+                v_pdm = {'sel_pdm': locals().get('sel_pdm', []), 'artigo_pdm': locals().get('artigo_pdm', ''), 'desc_pdm': locals().get('desc_pdm', '')}
 
                 # --- 2. EXTRAÇÃO DE TEXTO DOS DOCUMENTOS (AUTO, RELATÓRIO E PDM) ---
                 def extrair_pdf(upload):
                     if upload:
                         try:
-                            # reader importado via pypdf
                             reader = PdfReader(upload)
                             return "\n".join([page.extract_text() for page in reader.pages])
                         except Exception: return "Erro na leitura do documento."
@@ -541,72 +531,54 @@ with tabs[7]:
                 texto_relatorio_extra = extrair_pdf(st.session_state.get('relatorio_extra_pdf'))
                 texto_pdm_reg = extrair_pdf(st.session_state.get('pdm_reg_upload'))
 
-                # --- 3. PREPARAÇÃO DO QUADRO LEGISLATIVO PARA A IA ---
-                legis_ref_text = "\n".join([f"- {cat}: {', '.join(leis)}" for cat, leis in QUADRO_LEGAL_REF.items()])
-
-                # --- 4. CONSTRUÇÃO DAS INSTRUÇÕES DE AJUSTE PERSONALIZADO ---
-                inst_ajuste_geral = st.session_state.get('ia_custom_input', 'Seguir trâmite legal padrão.')
-
-                instrucoes_audit = f"""
-                ⚠️ INSTRUÇÃO PRIORITÁRIA GERAL (SOBREPÕE-SE AO PADRÃO):
-                {inst_ajuste_geral}
-
-                🎯 INSTRUÇÃO ESPECÍFICA DE ENQUADRAMENTO PDM:
-                {v_pdm['desc_pdm'] if v_pdm['desc_pdm'] else "Realizar análise de conformidade urbanística padrão."}
-
-                ⚠️ TAREFAS DE AUDITORIA AUTOMÁTICA:
-                1. REN: Determinar Regime de Controlo (Art. 21.º) e conformidade Portaria 419/2012.
-                2. RAN: Analisar áreas métricas no Auto/Relatório e verificar limites Portaria 162/2011.
-                3. PDM: Confrontar o Regulamento carregado com a 'Instrução de Enquadramento PDM' e o Auto de Notícia.
-                4. SANCIONATÓRIO: Determinar GRAVIDADE e MEDIDAS DE REPOSIÇÃO via Lei 50/2006 (v. 87/2024).
+                # --- 3. INSTRUÇÃO ESTRUTURAL (MODELO DOC 1) ---
+                # Aqui forçamos a IA a seguir os capítulos do ficheiro carregado [cite: 4, 13, 37]
+                modelo_estrutura = """
+                ESTRUTURA OBRIGATÓRIA (Baseada no Modelo Oficial):
+                I. ANTECEDENTES [cite: 4]
+                II. DESCRIÇÃO DO OBSERVADO (Local, coordenadas, estado das obras, identificação do infrator) [cite: 4, 8, 11]
+                III. CONDICIONANTES DE ORDENAMENTO E USO DO SOLO (Argumentação jurídica detalhada sobre REN, RAN, Rede Natura 2000 e PDM) [cite: 14, 15]
+                IV. ANÁLISE DE ALEGAÇÕES (Se aplicável) [cite: 36]
+                V. CONCLUSÃO E PARECER (Proposta de envio para processo de contraordenação e medidas de embargo/cessação) [cite: 37, 45, 46]
                 """
 
-                # Contextos específicos para o prompt
-                contexto_natura = f"NATURA 2000: Sítios: {v_natura['sel_zec']} | RNAP: {v_natura['sel_rnap']}" if incide_natura else "N/A"
-                contexto_ran = f"RAN: Interditas: {v_ran['sel_inter_ran']} | Pretensão: {v_ran['sel_util_ran']}" if incide_ran else "N/A"
-
-                # 5. Recuperação Segura da Descrição Manual de Factos
-                desc_manual_factos = st.session_state.get('desc_input', st.session_state.get('desc_detalhada', 'Sem descrição adicional.'))
+                inst_ajuste_geral = st.session_state.get('ia_custom_input', 'Seguir trâmite legal padrão.')
 
                 prompt = f"""
-                Age como Perito Técnico Sénior e Jurista Forense.
-                O teu objetivo é realizar uma auditoria pericial cruzada e redigir uma INFORMAÇÃO TÉCNICA FUNDAMENTADA.
+                Age como Perito Sénior da CCDR. O teu objetivo é redigir um RELATÓRIO DE FISCALIZAÇÃO seguindo o modelo oficial.
 
-                {instrucoes_audit}
+                {modelo_estrutura}
 
-                DADOS DE SUPORTE DOCUMENTAL (BASE DE PROVA):
-                - AUTO DE NOTÍCIA (PDF): {texto_auto[:4000]}
-                - RELATÓRIO TÉCNICO EXTRA (PDF): {texto_relatorio_extra[:4000]}
-                - REGULAMENTO PDM (EXTRATO): {texto_pdm_reg[:3000]}
+                ⚠️ INSTRUÇÃO PRIORITÁRIA DO UTILIZADOR:
+                {inst_ajuste_geral}
+
+                ⚠️ TAREFAS TÉCNICAS:
+                1. REN: Enquadrar no Artigo 20.º do RJREN (DL 124/2019 e DL 123/2024).
+                2. REDE NATURA: Enquadrar no Artigo 9.º do DL 140/99[cite: 31].
+                3. RAN: Verificar Portaria 162/2011 e DL 73/2009.
+                4. SANCIONATÓRIO: Aplicar Lei 50/2006 (v. 87/2024).
+
+                DADOS DE SUPORTE:
+                - AUTO DE NOTÍCIA: {texto_auto[:3000]}
+                - RELATÓRIO EXTRA: {texto_relatorio_extra[:2000]}
+                - REGULAMENTO PDM: {texto_pdm_reg[:2000]}
                 
-                DADOS ADICIONAIS DO CASO:
-                - Local: {local} | Área: {area_m2}m2 | Solo PDM: {v_pdm['sel_pdm']} | Artigos PDM: {v_pdm['artigo_pdm']}
-                - Descrição Manual de Factos: {desc_manual_factos}
+                DADOS DO CASO:
+                - Local: {local} | Área: {area_m2}m2 | Coordenadas: {lat} N; {lon} W [cite: 3, 4]
+                - Infrator: {inf_nome} ({tipo_ent}) [cite: 11, 12]
+                - Instrução PDM: {v_pdm['desc_pdm']}
 
-                MATRIZ DE SERVIDÕES CONFIGURADAS:
-                - REN: {v_ren['sel_ren']} | Interdições: {v_ren['sel_inter_ren']}
-                - {contexto_ran}
-                - {contexto_natura}
-                - PATRIMÓNIO: {v_pat['sel_pat_int']} | RECURSOS HÍDRICOS: {v_rh['sel_rh_int']}
+                MATRIZ DE SERVIDÕES:
+                - REN: {v_ren['sel_ren']} | Interdições: {v_ren['sel_inter_ren']} [cite: 18, 41]
+                - RAN: {v_ran['sel_inter_ran']} | Pretensão: {v_ran['sel_util_ran']}
 
-                QUADRO LEGISLATIVO VIGENTE (2024-2026):
-                {legis_ref_text}
-
-                ESTRUTURA OBRIGATÓRIA:
-                1. **OBJETIVO E AUDITORIA DOCUMENTAL** (Validar factos entre Auto e Relatório)
-                2. **ANÁLISE TÉCNICA TRANSVERSAL** (Confronto Portarias 419/2012, 162/2011 e Regulamento PDM)
-                3. **FUNDAMENTAÇÃO JURÍDICA E GRADUAÇÃO DA INFRAÇÃO** (Lei 50/2006 v. 2026)
-                4. **PRESCRIÇÃO DE MEDIDAS DE REPOSIÇÃO E MINIMIZAÇÃO**
-                5. **PARECER FINAL SOBRE VIABILIDADE DE LEGALIZAÇÃO**
-
-                ESTILO: Jurídico, formal, Português de Portugal (PT-PT).
+                Redige o texto final de forma formal, justificada e pronta para despacho[cite: 1, 48].
                 """
                 
                 try:
                     res = model.generate_content(prompt).text
-                    st.success("Informação Técnica pericial gerada com sucesso!")
+                    st.success("Relatório de Fiscalização gerado com sucesso!")
                     st.write(res)
-                    # Função de exportação para Word
-                    st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"InfoTecnica_{local}.docx")
+                    st.download_button("📥 Descarregar Word", export_docx(res), file_name=f"Relatorio_Fiscalizacao_{local}.docx")
                 except Exception as e:
                     st.error(f"Erro na geração: {e}")
